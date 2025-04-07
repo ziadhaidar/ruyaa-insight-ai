@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Moon, BookOpen, Shield } from "lucide-react";
 import Layout from "@/components/Layout";
+import ParticleAnimation from "@/components/ParticleAnimation";
 
 const LandingPage: React.FC = () => {
   const { t } = useLanguage();
@@ -19,6 +20,11 @@ const LandingPage: React.FC = () => {
           <h1 className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-islamic-green to-islamic-green-dark animate-fade-in">
             {t("appName")}
           </h1>
+          
+          <div className="flex justify-center mb-8">
+            <ParticleAnimation size="h-64 w-64" className="mx-auto" />
+          </div>
+          
           <p className="text-xl mb-8 text-muted-foreground max-w-2xl mx-auto">
             {t("welcomeMessage")}
           </p>

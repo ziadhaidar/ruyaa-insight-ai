@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -52,6 +53,25 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				// Islamic theme colors
+				islamic: {
+					green: {
+						DEFAULT: '#0A5F38',
+						light: '#2E8B57',
+						dark: '#1D4D4F',
+					},
+					gold: {
+						DEFAULT: '#D4AF37',
+						light: '#F4C430',
+						dark: '#996515',
+					},
+					black: {
+						DEFAULT: '#000000',
+						light: '#333333',
+					},
+					cream: '#F5F5DC',
+					pattern: '#F8F4E3',
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -84,11 +104,29 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fade-in': {
+					'0%': { opacity: '0' },
+					'100%': { opacity: '1' },
+				},
+				'pulse-subtle': {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.8' },
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.5s ease-in-out',
+				'pulse-subtle': 'pulse-subtle 3s infinite',
+			},
+			fontFamily: {
+				arabic: ['Amiri', 'serif'],
+				lateef: ['Lateef', 'serif'],
+			},
+			backgroundImage: {
+				'islamic-pattern': "url('/patterns/islamic-pattern.svg')",
+				'islamic-gradient': 'linear-gradient(to right, #0A5F38, #1D4D4F)',
 			}
 		}
 	},

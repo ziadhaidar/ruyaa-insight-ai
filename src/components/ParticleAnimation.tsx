@@ -60,19 +60,19 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       positions[i * 3 + 1] = randRadius * Math.sin(phi) * Math.sin(theta); // y
       positions[i * 3 + 2] = randRadius * Math.cos(phi);                   // z
       
-      // Use Islamic green and gold colors with a gradient effect
-      const heightFactor = (positions[i * 3 + 1] / radius + 1) / 2; // normalize y to 0-1
+      // Use predominantly dark green with sparse gold particles (only ~5% gold)
+      const isGold = Math.random() < 0.05; // Only 5% chance of being gold
       
-      if (heightFactor > 0.5) {
-        // More gold particles at the top
-        colors[i * 3] = 0.83 + Math.random() * 0.17;     // R
-        colors[i * 3 + 1] = 0.69 + Math.random() * 0.11; // G
-        colors[i * 3 + 2] = 0.22 + Math.random() * 0.08; // B
+      if (isGold) {
+        // Gold particles - slightly brighter to stand out
+        colors[i * 3] = 0.85 + Math.random() * 0.15;     // R
+        colors[i * 3 + 1] = 0.70 + Math.random() * 0.10; // G
+        colors[i * 3 + 2] = 0.20 + Math.random() * 0.10; // B
       } else {
-        // More green particles at the bottom
-        colors[i * 3] = 0.04 + Math.random() * 0.06;     // R
-        colors[i * 3 + 1] = 0.37 + Math.random() * 0.1;  // G
-        colors[i * 3 + 2] = 0.22 + Math.random() * 0.08; // B
+        // Dark green particles - with subtle variations
+        colors[i * 3] = 0.03 + Math.random() * 0.04;     // R
+        colors[i * 3 + 1] = 0.30 + Math.random() * 0.08; // G
+        colors[i * 3 + 2] = 0.15 + Math.random() * 0.06; // B
       }
     }
     

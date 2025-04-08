@@ -8,12 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { Separator } from "@/components/ui/separator";
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -30,13 +31,18 @@ const LoginForm: React.FC = () => {
         description: "Welcome back to Nour Al Ruyaa",
       });
     } catch (error) {
-      toast({
-        title: "Login failed",
-        description: "Please check your credentials and try again",
-        variant: "destructive",
-      });
+      // Error is already handled in the auth context
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      await loginWithGoogle();
+      // Redirect is handled by OAuth flow
+    } catch (error) {
+      // Error is already handled in the auth context
     }
   };
 
@@ -73,6 +79,21 @@ const LoginForm: React.FC = () => {
             {isLoading ? "Loading..." : t("login")}
           </Button>
         </form>
+
+        <div className="flex items-center my-4">
+          <Separator className="flex-grow" />
+          <span className="px-2 text-sm text-muted-foreground">OR</span>
+          <Separator className="flex-grow" />
+        </div>
+
+        <Button 
+          type="button" 
+          variant="outline" 
+          className="w-full" 
+          onClick={handleGoogleLogin}
+        >
+          Continue with Google
+        </Button>
       </CardContent>
       <CardFooter>
         <p className="text-center w-full">

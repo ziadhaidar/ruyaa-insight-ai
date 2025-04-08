@@ -1,8 +1,7 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/context/LanguageContext";
-import { useDream } from "@/context/DreamContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,11 +13,58 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import { Dream } from "@/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const PastDreamsTable: React.FC = () => {
   const { t } = useLanguage();
-  const { dreams, getMessages } = useDream();
+  const [dreams, setDreams] = useState<Dream[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchDreams = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('dreams')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        setDreams(data || []);
+      } catch (error) {
+        console.error("Error fetching dreams:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDreams();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("pastDreams")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!dreams.length) {
     return (
@@ -34,11 +80,6 @@ const PastDreamsTable: React.FC = () => {
       </Card>
     );
   }
-
-  // Sort dreams by creation date (newest first)
-  const sortedDreams = [...dreams].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
 
   return (
     <Card>
@@ -56,24 +97,25 @@ const PastDreamsTable: React.FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedDreams.map((dream) => {
-              const messages = getMessages(dream.id);
+            {dreams.map((dream) => {
+              // Determine status based on interpretation field
+              const status = dream.interpretation ? "completed" : "pending";
               
               return (
                 <TableRow key={dream.id}>
                   <TableCell>
-                    {format(new Date(dream.createdAt), "MMM d, yyyy")}
+                    {format(new Date(dream.created_at), "MMM d, yyyy")}
                   </TableCell>
                   <TableCell className="max-w-[300px] truncate">
-                    {dream.content}
+                    {dream.dream_text}
                   </TableCell>
                   <TableCell>
-                    <span className={`capitalize ${dream.status === "completed" ? "text-green-600" : "text-amber-600"}`}>
-                      {dream.status}
+                    <span className={`capitalize ${status === "completed" ? "text-green-600" : "text-amber-600"}`}>
+                      {status}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
-                    {dream.status === "completed" && (
+                    {status === "completed" && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -82,7 +124,7 @@ const PastDreamsTable: React.FC = () => {
                         View
                       </Button>
                     )}
-                    {dream.status === "pending" && (
+                    {status === "pending" && (
                       <Button
                         variant="outline"
                         size="sm"

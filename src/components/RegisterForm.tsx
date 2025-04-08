@@ -8,13 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { Separator } from "@/components/ui/separator";
 
 const RegisterForm: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -25,19 +26,20 @@ const RegisterForm: React.FC = () => {
     
     try {
       await register(email, password, displayName);
-      navigate("/home");
-      toast({
-        title: "Registration successful",
-        description: "Welcome to Nour Al Ruyaa",
-      });
+      navigate("/login");
     } catch (error) {
-      toast({
-        title: "Registration failed",
-        description: "Please try again with a different email",
-        variant: "destructive",
-      });
+      // Error is already handled in the auth context
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      await loginWithGoogle();
+      // Redirect is handled by OAuth flow
+    } catch (error) {
+      // Error is already handled in the auth context
     }
   };
 
@@ -85,6 +87,21 @@ const RegisterForm: React.FC = () => {
             {isLoading ? "Loading..." : t("register")}
           </Button>
         </form>
+
+        <div className="flex items-center my-4">
+          <Separator className="flex-grow" />
+          <span className="px-2 text-sm text-muted-foreground">OR</span>
+          <Separator className="flex-grow" />
+        </div>
+
+        <Button 
+          type="button" 
+          variant="outline" 
+          className="w-full" 
+          onClick={handleGoogleLogin}
+        >
+          Continue with Google
+        </Button>
       </CardContent>
       <CardFooter>
         <p className="text-center w-full">

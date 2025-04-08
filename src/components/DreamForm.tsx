@@ -7,16 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 
 const DreamForm: React.FC = () => {
   const [dreamContent, setDreamContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { t } = useLanguage();
   const { startNewDreamSession } = useDream();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dreamContent.trim()) {
       toast({
@@ -27,9 +30,32 @@ const DreamForm: React.FC = () => {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please login to submit your dream",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
+      // Save dream to Supabase
+      const { error, data } = await supabase
+        .from('dreams')
+        .insert({
+          user_id: user.id,
+          dream_text: dreamContent,
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      
+      // Use existing dream session management
       startNewDreamSession(dreamContent);
       navigate("/payment");
       
@@ -37,10 +63,11 @@ const DreamForm: React.FC = () => {
         title: "Dream submitted",
         description: "Please proceed with payment to receive an interpretation",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error submitting dream:", error);
       toast({
         title: "Submission failed",
-        description: "Please try again",
+        description: error.message || "Please try again",
         variant: "destructive",
       });
     } finally {

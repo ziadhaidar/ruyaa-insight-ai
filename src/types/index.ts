@@ -7,10 +7,13 @@ export interface User {
 
 export interface Dream {
   id: string;
-  userId: string;
-  content: string;
-  createdAt: string;
-  status: "pending" | "paid" | "interpreting" | "completed";
+  user_id: string;
+  dream_text: string;
+  questions?: any[];
+  answers?: any[];
+  interpretation?: string;
+  created_at: string;
+  status?: "pending" | "paid" | "interpreting" | "completed";
 }
 
 export interface Message {
@@ -38,3 +41,40 @@ export interface InterpretationSession {
 }
 
 export type Language = "en" | "ar";
+
+// Extend the Database interface with database types
+export interface Database {
+  public: {
+    Tables: {
+      dreams: {
+        Row: {
+          id: string;
+          user_id: string;
+          dream_text: string;
+          questions: any[] | null;
+          answers: any[] | null;
+          interpretation: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          dream_text: string;
+          questions?: any[] | null;
+          answers?: any[] | null;
+          interpretation?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          dream_text?: string;
+          questions?: any[] | null;
+          answers?: any[] | null;
+          interpretation?: string | null;
+          created_at?: string;
+        };
+      };
+    };
+  };
+}

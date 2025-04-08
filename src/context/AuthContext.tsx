@@ -1,11 +1,15 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { User } from "@/types";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 interface AuthContextProps {
   user: User | null;
+  session: Session | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   register: (email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -14,50 +18,99 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
-  // Mock authentication for now
-  // When Supabase is integrated, this would use proper auth methods
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log("Auth state changed:", event, session);
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Mock login process - will be replaced with Supabase auth
-      const mockUser: User = {
-        id: "mock-user-1",
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        displayName: email.split("@")[0],
-      };
-      setUser(mockUser);
-      localStorage.setItem("user", JSON.stringify(mockUser));
-    } catch (error) {
+        password,
+      });
+      
+      if (error) throw error;
+    } catch (error: any) {
       console.error("Login error:", error);
+      toast({
+        title: "Login failed",
+        description: error.message || "Please check your credentials and try again",
+        variant: "destructive",
+      });
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
+  const loginWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/home`
+        }
+      });
+      
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("Google login error:", error);
+      toast({
+        title: "Google login failed",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   const register = async (email: string, password: string, displayName?: string) => {
     setIsLoading(true);
     try {
-      // Mock registration process - will be replaced with Supabase auth
-      const mockUser: User = {
-        id: "mock-user-1",
+      const { error } = await supabase.auth.signUp({
         email,
-        displayName: displayName || email.split("@")[0],
-      };
-      setUser(mockUser);
-      localStorage.setItem("user", JSON.stringify(mockUser));
-    } catch (error) {
+        password,
+        options: {
+          data: {
+            display_name: displayName || email.split("@")[0],
+          },
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Registration successful",
+        description: "Please check your email to confirm your account",
+      });
+    } catch (error: any) {
       console.error("Registration error:", error);
+      toast({
+        title: "Registration failed",
+        description: error.message || "Please try a different email",
+        variant: "destructive",
+      });
       throw error;
     } finally {
       setIsLoading(false);
@@ -65,13 +118,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    // Mock logout process - will be replaced with Supabase auth
-    setUser(null);
-    localStorage.removeItem("user");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Logout failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, session, isLoading, login, loginWithGoogle, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

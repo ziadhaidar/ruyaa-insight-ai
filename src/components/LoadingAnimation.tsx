@@ -10,9 +10,9 @@ const LoadingAnimation: React.FC<LoadingAnimationProps> = ({ message = "Processi
   return (
     <div className="flex flex-col items-center justify-center py-8">
       <div className="relative">
-        <ParticleAnimation size="h-48 w-48" className="mb-4" />
+        <ParticleAnimation size="h-64 w-64" className="mb-4" />
         <div className="absolute bottom-0 w-full flex justify-center">
-          <span className="text-xs text-islamic-gold opacity-70">AI wisdom</span>
+          <span className="text-xs text-islamic-gold opacity-70">Divine wisdom</span>
         </div>
       </div>
       <p className="text-center text-muted-foreground animate-pulse mt-2">{message}</p>

@@ -136,19 +136,70 @@ export const DreamProvider = ({ children }: { children: ReactNode }) => {
     return selectedQuestions.slice(0, 3);
   };
 
-  // Mock AI response function that uses personalized questions
-  const getAIResponse = async (prompt: string, includeQuranVerse: boolean = false, dreamContent: string = ""): Promise<string> => {
-    // This simulates a delay and returns a mock response
+  // Mock AI response function using the Islamic dream interpretation guidance
+  const getAIResponse = async (
+    prompt: string, 
+    includeQuranVerse: boolean = false, 
+    dreamContent: string = ""
+  ): Promise<string> => {
+    // This simulates a delay for the AI response
     await new Promise(resolve => setTimeout(resolve, 2500));
     
+    // AI Prompt: Nour Al Ruyaa - Islamic Dream Interpreter
+    const aiPrompt = `
+      You are Nour Al Ruyaa, an Islamic AI assistant specialized in the interpretation of dreams 
+      according to the Quran and authentic Islamic teachings.
+
+      When a user submits a dream:
+      
+      1. Analyze the dream and extract the key symbolic elements.
+      
+      2. Based on your analysis, ask 3 concise follow-up questions that will help you better 
+         understand the dream's context and refine your interpretation.
+      
+      3. Once the user has answered, provide a clear and concise interpretation of the dream.
+      
+      4. Use only the Quran and verified Islamic knowledge as your source of interpretation.
+      
+      5. Include Quranic verses (in Arabic, followed by their English translation) that 
+         support your interpretation.
+      
+      6. Never reference modern psychology, cultural superstitions, or personal opinions.
+      
+      7. End your interpretation by sharing one final verse from the Quran that reflects 
+         the spiritual or moral lesson derived from the dream.
+      
+      Your tone must always be:
+      
+      - Faithful to Islamic knowledge
+      - Realistic and honest, even when the interpretation is difficult or negative
+      - Respectful and composed
+      - Never emotional, motivational, or speculative
+      - Never give your own opinion or reference modern psychology
+    `;
+    
     if (includeQuranVerse) {
+      // Final interpretation with Quranic verse
       return `
 <div class="quran-verse">
   <p class="arabic-text">وَإِذْ قَالَ رَبُّكَ لِلْمَلَائِكَةِ إِنِّي جَاعِلٌ فِي الْأَرْضِ خَلِيفَةً ۖ قَالُوا أَتَجْعَلُ فِيهَا مَن يُفْسِدُ فِيهَا وَيَسْفِكُ الدِّمَاءَ وَنَحْنُ نُسَبِّحُ بِحَمْدِكَ وَنُقَدِّسُ لَكَ ۖ قَالَ إِنِّي أَعْلَمُ مَا لَا تَعْلَمُونَ</p>
   <p class="english-translation">And [mention, O Muhammad], when your Lord said to the angels, "Indeed, I will make upon the earth a successive authority." They said, "Will You place upon it one who causes corruption therein and sheds blood, while we declare Your praise and sanctify You?" Allah said, "Indeed, I know that which you do not know." [Quran 2:30]</p>
 </div>
 
-Based on this verse and your dream description, I believe this dream may be indicating a position of responsibility you're being prepared for. The water in your dream symbolizes knowledge and purity in Islamic tradition, while the mountain represents steadfastness and the challenges you may face.`;
+Based on your dream description and answers to my questions, I will now provide an interpretation according to Islamic knowledge:
+
+The water in your dream symbolizes knowledge and spiritual purity in Islamic tradition. Clear water specifically represents beneficial knowledge and spiritual clarity. The mountain you described represents steadfastness and challenges that one must overcome in the path of faith.
+
+This dream appears to indicate that Allah is preparing you for a position of responsibility that requires both knowledge (water) and steadfastness (mountain). The feeling of tranquility you experienced suggests this is a positive sign from Allah.
+
+In Islamic dream interpretation, when one sees themselves in an elevated position with clean elements of nature, it often signifies spiritual elevation and closeness to Allah's guidance.
+
+As a final reflection, consider this verse:
+
+<div class="quran-verse">
+  <p class="arabic-text">يَرْفَعِ اللَّهُ الَّذِينَ آمَنُوا مِنكُمْ وَالَّذِينَ أُوتُوا الْعِلْمَ دَرَجَاتٍ ۚ وَاللَّهُ بِمَا تَعْمَلُونَ خَبِيرٌ</p>
+  <p class="english-translation">Allah will raise those who have believed among you and those who were given knowledge, by degrees. And Allah is Aware of what you do. [Quran 58:11]</p>
+</div>`;
     }
     
     // Get personalized questions based on the dream content
@@ -160,8 +211,8 @@ Based on this verse and your dream description, I believe this dream may be indi
       }
     }
     
-    // Final response
-    return "Thank you for sharing your dream and answering these questions. I will now provide an interpretation based on Islamic teachings.";
+    // Initial response after payment
+    return "Thank you for sharing your dream. To provide an accurate interpretation according to Islamic teachings, I need to understand a few more details about your dream:";
   };
 
   const startNewDreamSession = (dreamContent: string) => {

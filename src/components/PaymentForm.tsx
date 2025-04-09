@@ -1,100 +1,121 @@
 
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useLanguage } from "@/context/LanguageContext";
-import { useDream } from "@/context/DreamContext";
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CreditCard, DollarSign } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useLanguage } from "@/context/LanguageContext";
+import { useNavigate } from "react-router-dom";
+import { useDream } from "@/context/DreamContext";
 import { useToast } from "@/components/ui/use-toast";
 
+const PaymentOptions = [
+  { id: "basic", name: "Basic Interpretation", price: 5, currency: "USD" },
+  { id: "standard", name: "Standard Interpretation", price: 10, currency: "USD" },
+  { id: "premium", name: "Premium Interpretation", price: 20, currency: "USD" },
+];
+
 const PaymentForm: React.FC = () => {
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedOption, setSelectedOption] = React.useState(PaymentOptions[1].id);
+  const [isProcessing, setIsProcessing] = React.useState(false);
   const { t } = useLanguage();
-  const { confirmPayment, currentSession } = useDream();
   const navigate = useNavigate();
+  const { currentDream, processDreamInterpretation } = useDream();
   const { toast } = useToast();
 
-  // Redirect if there's no active session
-  React.useEffect(() => {
-    if (!currentSession) {
-      navigate("/home");
-    }
-  }, [currentSession, navigate]);
-
   const handlePayment = async () => {
-    setIsProcessing(true);
-    
-    try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Process payment
-      await confirmPayment();
-      
-      // Navigate to interpretation
-      navigate("/interpretation");
-      
+    if (!currentDream) {
       toast({
-        title: "Payment successful",
-        description: "Your dream interpretation will begin now",
-      });
-    } catch (error) {
-      toast({
-        title: "Payment failed",
-        description: "Please try again or use a different payment method",
+        title: "No dream selected",
+        description: "Please submit a dream first",
         variant: "destructive",
       });
-    } finally {
-      setIsProcessing(false);
+      navigate("/home");
+      return;
     }
-  };
 
-  if (!currentSession) {
-    return null;
-  }
+    setIsProcessing(true);
+
+    // In a real app, you'd call your payment processor here
+    // For this demo, we'll simulate a payment
+    setTimeout(() => {
+      // Simulate successful payment
+      toast({
+        title: "Payment successful",
+        description: "Your dream is being processed for interpretation",
+      });
+
+      // Start processing the dream interpretation
+      processDreamInterpretation();
+      
+      // Navigate to interpretation page
+      navigate("/interpretation");
+      
+      setIsProcessing(false);
+    }, 2000);
+  };
+  
+  // Find the selected payment option
+  const option = PaymentOptions.find((o) => o.id === selectedOption);
 
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle className="text-center">{t("payment")}</CardTitle>
-        <CardDescription className="text-center">
-          Dream interpretation fee: $5.00
-        </CardDescription>
+        <CardTitle className="text-center">{t("paymentTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="p-4 bg-muted rounded-lg">
-          <h3 className="font-medium mb-2">Dream Preview:</h3>
-          <p className="text-sm text-muted-foreground line-clamp-3">
-            {currentSession.dream.content}
+        {currentDream && (
+          <div className="mb-4 p-4 bg-secondary/30 rounded-md">
+            <h3 className="font-medium mb-2">{t("dreamSummary")}</h3>
+            <p className="text-sm line-clamp-3">{currentDream.dream_text}</p>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <label className="block text-sm font-medium">{t("selectPlan")}</label>
+          <Select value={selectedOption} onValueChange={setSelectedOption}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a plan" />
+            </SelectTrigger>
+            <SelectContent>
+              {PaymentOptions.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.name} - ${option.price}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {option && (
+            <div className="p-4 border rounded-md">
+              <div className="flex justify-between mb-2">
+                <span>{option.name}</span>
+                <span className="font-bold">
+                  ${option.price} {option.currency}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {option.id === "basic"
+                  ? t("basicPlanDescription")
+                  : option.id === "standard"
+                  ? t("standardPlanDescription")
+                  : t("premiumPlanDescription")}
+              </p>
+            </div>
+          )}
+
+          <Button 
+            className="w-full islamic-gradient-btn" 
+            onClick={handlePayment}
+            disabled={isProcessing}
+          >
+            {isProcessing ? t("processing") : t("payNow")}
+          </Button>
+
+          <p className="text-xs text-center text-muted-foreground">
+            {t("paymentDisclaimer")}
           </p>
         </div>
-        
-        <div className="space-y-3">
-          <Button 
-            className="w-full flex items-center justify-center gap-2"
-            onClick={handlePayment}
-            disabled={isProcessing}
-          >
-            <CreditCard className="h-4 w-4" />
-            {isProcessing ? "Processing..." : t("payNow")}
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className="w-full flex items-center justify-center gap-2"
-            onClick={handlePayment}
-            disabled={isProcessing}
-          >
-            <DollarSign className="h-4 w-4" />
-            PayPal
-          </Button>
-        </div>
       </CardContent>
-      <CardFooter className="text-center text-sm text-muted-foreground flex flex-col space-y-2">
-        <p>Secure payment processing through Stripe</p>
-        <p>You will receive a detailed Quranic interpretation of your dream</p>
-      </CardFooter>
     </Card>
   );
 };

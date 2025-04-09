@@ -1,84 +1,127 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useLanguage } from "@/context/LanguageContext";
-import { useDream } from "@/context/DreamContext";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Mail, ArrowLeft } from "lucide-react";
-import Layout from "@/components/Layout";
 import { format } from "date-fns";
+import { Dream } from "@/types";
+import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import Layout from "@/components/Layout";
+import { useToast } from "@/components/ui/use-toast";
 
 const DreamDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [dream, setDream] = useState<Dream | null>(null);
+  const [loading, setLoading] = useState(true);
   const { t } = useLanguage();
-  const { getDream, getMessages, sendToEmail } = useDream();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  
-  const dream = id ? getDream(id) : undefined;
-  const messages = id ? getMessages(id) : [];
-  
+  const { toast } = useToast();
+
   useEffect(() => {
-    if (!dream) {
-      navigate("/dreams");
-    }
-  }, [dream, navigate]);
-  
-  if (!dream) {
-    return null;
+    const fetchDreamDetail = async () => {
+      if (!user || !id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('dreams')
+          .select('*')
+          .eq('id', id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        if (!data) {
+          toast({
+            title: "Dream not found",
+            description: "The dream you're looking for does not exist or you don't have permission to view it.",
+            variant: "destructive",
+          });
+          navigate("/dreams");
+          return;
+        }
+
+        setDream(data);
+      } catch (error: any) {
+        console.error("Error fetching dream details:", error);
+        toast({
+          title: "Error",
+          description: error.message || "An error occurred while fetching the dream details.",
+          variant: "destructive",
+        });
+        navigate("/dreams");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDreamDetail();
+  }, [id, user, navigate, toast]);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-14rem)]">
+          <p>Loading dream details...</p>
+        </div>
+      </Layout>
+    );
   }
-  
-  const handleSendToEmail = () => {
-    if (id) {
-      sendToEmail(id);
-    }
-  };
-  
+
+  if (!dream) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-14rem)]">
+          <p>Dream not found.</p>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-2 mb-6">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => navigate("/dreams")}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-2xl font-bold">Dream Interpretation</h1>
-        </div>
-        
-        <Card className="mb-4">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="font-medium">Your Dream</h2>
-                <p className="text-sm text-muted-foreground">
-                  {format(new Date(dream.createdAt), "MMMM d, yyyy")}
-                </p>
-              </div>
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={handleSendToEmail}
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                {t("sendToEmail")}
+      <div className="max-w-4xl mx-auto">
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex justify-between items-center">
+              <span>Dream from {format(new Date(dream.created_at), "MMMM d, yyyy")}</span>
+              <Button variant="outline" size="sm" onClick={() => navigate("/dreams")}>
+                Back to Dreams
               </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Your Dream</h3>
+              <p className="text-muted-foreground p-4 bg-secondary/30 rounded-md">
+                {dream.dream_text}
+              </p>
             </div>
-            <p className="mb-4">{dream.content}</p>
+
+            {dream.interpretation && (
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Interpretation</h3>
+                <div className="p-4 bg-primary/10 rounded-md">
+                  <p>{dream.interpretation}</p>
+                </div>
+              </div>
+            )}
+
+            {!dream.interpretation && (
+              <div className="text-center p-6">
+                <p className="mb-4">This dream has not been interpreted yet.</p>
+                <Button onClick={() => navigate("/payment")}>
+                  Get Interpretation
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
-        
-        <div className="space-y-4">
-          {messages.filter(m => m.sender === "ai").map((message, index) => (
-            <div
-              key={message.id}
-              className="p-4 rounded-lg bg-primary/10"
-              dangerouslySetInnerHTML={{ __html: message.content }}
-            />
-          ))}
-        </div>
       </div>
     </Layout>
   );

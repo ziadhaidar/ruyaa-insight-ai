@@ -39,9 +39,11 @@ const LoginForm: React.FC = () => {
 
   const handleGoogleLogin = async () => {
     try {
+      console.log("Initiating Google login");
       await loginWithGoogle();
       // Redirect is handled by OAuth flow
     } catch (error) {
+      console.error("Google login error in component:", error);
       // Error is already handled in the auth context
     }
   };

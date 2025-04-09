@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface AuthContextProps {
   user: User | null;
@@ -21,6 +22,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+
+  // Check for hash fragment in URL that indicates a redirect from OAuth
+  useEffect(() => {
+    // This handles the OAuth redirects
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      // The hash contains OAuth tokens, let Supabase handle it
+      const { data: { session } } = supabase.auth.getSession();
+      
+      // If we have hash params but no session yet, this means we need to process the hash
+      if (!session) {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session) {
+            window.location.href = '/home'; // Redirect to home after successful OAuth login
+          }
+        });
+      }
+    }
+  }, []);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -69,7 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/home'
+          redirectTo: window.location.origin, // Change to the root URL
         }
       });
       

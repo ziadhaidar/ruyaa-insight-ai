@@ -9,10 +9,12 @@ interface AuthContextProps {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
+  hasCompleteProfile: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   register: (email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshProfileStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -21,24 +23,111 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasCompleteProfile, setHasCompleteProfile] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Check profile completion status
+  const checkProfileCompletion = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('age, gender, marital_status, has_kids, has_pets, work_status')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error("Error checking profile:", error);
+        return false;
+      }
+
+      // Check if all required fields are present
+      const isComplete = data && 
+        data.age !== null && 
+        data.gender !== null && 
+        data.marital_status !== null && 
+        data.has_kids !== null && 
+        data.has_pets !== null && 
+        data.work_status !== null;
+      
+      setHasCompleteProfile(!!isComplete);
+      return !!isComplete;
+    } catch (error) {
+      console.error("Error checking profile completion:", error);
+      return false;
+    }
+  };
+
+  const refreshProfileStatus = async () => {
+    if (user) {
+      await checkProfileCompletion(user.id);
+    }
+  };
+
+  // Handle authentication state changes
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("Auth state changed:", event, session);
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // Check profile completion on auth state change
+        if (session?.user) {
+          // Use setTimeout to prevent recursive updates
+          setTimeout(async () => {
+            const isComplete = await checkProfileCompletion(session.user.id);
+            
+            // Redirect to profile completion if needed
+            if (event === 'SIGNED_IN' && !isComplete) {
+              navigate('/complete-profile');
+            }
+          }, 0);
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        await checkProfileCompletion(session.user.id);
+      }
+      
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   // Check for hash fragment in URL that indicates a redirect from OAuth
   useEffect(() => {
     // This handles the OAuth redirects
     if (window.location.hash && window.location.hash.includes('access_token')) {
       // Process the hash fragment
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
         if (session) {
           console.log("OAuth session found:", session);
           setSession(session);
           setUser(session?.user ?? null);
+          
+          // Check if the user has a complete profile
+          const isComplete = await checkProfileCompletion(session.user.id);
+          
           toast({
             title: "Login successful",
             description: "Welcome to Nour Al Ruyaa",
           });
-          navigate("/home");
+          
+          // Redirect based on profile completion
+          if (!isComplete) {
+            navigate("/complete-profile");
+          } else {
+            navigate("/home");
+          }
         }
       });
     }
@@ -154,7 +243,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, login, loginWithGoogle, register, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      isLoading, 
+      hasCompleteProfile, 
+      login, 
+      loginWithGoogle, 
+      register, 
+      logout,
+      refreshProfileStatus
+    }}>
       {children}
     </AuthContext.Provider>
   );

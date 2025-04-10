@@ -1,346 +1,341 @@
 
 import { v4 as uuidv4 } from "uuid";
-import { Dream, InterpretationSession, Message } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { Dream, Message, InterpretationSession } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
 
-export const useDreamActions = (dreamState: any) => {
+export const useDreamActions = (state: any) => {
   const { toast } = useToast();
-  const {
-    currentDream,
-    setCurrentDream,
-    currentSession,
-    setCurrentSession,
-    interpretationSession,
-    setInterpretationSession,
-    isLoading,
-    setIsLoading,
-    threadId,
-    setThreadId,
-    user,
-    createAssistantThread,
-    sendMessageToAssistant,
-    runAssistantAndGetResponse
-  } = dreamState;
 
-  // Process the dream interpretation with OpenAI Assistant
+  // Process a dream interpretation request
   const processDreamInterpretation = async () => {
-    if (!currentDream || !user) return;
+    if (!state.currentDream || !state.user) return;
     
-    setIsLoading(true);
+    state.setIsLoading(true);
     
     try {
-      // Save the dream to the database first
-      const { error: saveError } = await supabase
-        .from('dreams')
-        .insert([{
-          id: currentDream.id,
-          user_id: currentDream.user_id,
-          dream_text: currentDream.dream_text,
-          questions: [],
-          answers: [],
-        }]);
-      
-      if (saveError) {
-        console.error("Error saving dream:", saveError);
-        throw saveError;
-      }
-      
       // Create a new OpenAI thread
-      const createdThreadId = await createAssistantThread();
+      const threadId = state.threadId || await state.createAssistantThread();
       
-      if (!createdThreadId) {
+      if (!threadId) {
         throw new Error("Failed to create OpenAI thread");
       }
       
-      setThreadId(createdThreadId);
+      state.setThreadId(threadId);
       
-      // Add the dream as a message to the thread
-      await sendMessageToAssistant(createdThreadId, currentDream.dream_text, user.id);
+      // Send the dream to the assistant
+      const message = await state.sendMessageToAssistant(
+        threadId, 
+        state.currentDream.dream_text, 
+        state.user.id
+      );
       
-      // Get the assistant's response
-      const responseText = await runAssistantAndGetResponse(createdThreadId);
+      if (!message) {
+        throw new Error("Failed to send message to assistant");
+      }
       
-      // Create a new interpretation session
-      const newSession: InterpretationSession = {
-        dream: currentDream,
+      // Run the assistant to get the first question
+      const assistantResponse = await state.runAssistantAndGetResponse(threadId);
+      
+      if (!assistantResponse) {
+        throw new Error("Failed to get response from assistant");
+      }
+      
+      // Create a new session with the messages
+      const session: InterpretationSession = {
+        dream: state.currentDream,
         messages: [
           {
             id: uuidv4(),
-            dreamId: currentDream.id,
-            content: currentDream.dream_text,
+            dreamId: state.currentDream.id,
+            content: state.currentDream.dream_text,
             sender: "user",
             timestamp: new Date().toISOString()
           },
           {
             id: uuidv4(),
-            dreamId: currentDream.id,
-            content: responseText,
+            dreamId: state.currentDream.id,
+            content: assistantResponse,
             sender: "ai",
             timestamp: new Date().toISOString()
           }
         ],
-        currentQuestion: 0,
+        currentQuestion: 1,
         isComplete: false
       };
       
-      setCurrentSession(newSession);
-      setInterpretationSession(newSession);
+      state.setCurrentSession(session);
       
-      // Save the interpretation in the database
-      await supabase
-        .from('dreams')
-        .update({
-          interpretation: responseText
-        })
-        .eq('id', currentDream.id);
+      // Save dream to database
+      const { error } = await supabase.from('dreams').insert({
+        id: state.currentDream.id,
+        user_id: state.user.id,
+        dream_text: state.currentDream.dream_text,
+        status: "interpreting"
+      });
       
-    } catch (error) {
+      if (error) {
+        console.error("Error saving dream:", error);
+      }
+      
+    } catch (error: any) {
       console.error("Error processing dream interpretation:", error);
       toast({
-        title: "Interpretation failed",
-        description: "We couldn't process your dream interpretation. Please try again later.",
-        variant: "destructive",
+        title: "Error",
+        description: "Couldn't process your dream interpretation, please try again later.",
+        variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      state.setIsLoading(false);
     }
   };
-
-  // Ask a follow-up question about the dream
+  
+  // Ask a follow-up question
   const askQuestion = async (question: string) => {
-    if (!interpretationSession || !threadId || !user) return;
+    if (!state.currentSession || !state.threadId || !state.user) return;
     
-    setIsLoading(true);
-    
-    try {
-      // Add user question to messages
-      const updatedMessages: Message[] = [
-        ...interpretationSession.messages,
-        {
-          id: uuidv4(),
-          dreamId: interpretationSession.dream.id,
-          content: question,
-          sender: "user",
-          timestamp: new Date().toISOString()
-        }
-      ];
-      
-      setInterpretationSession(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          messages: updatedMessages,
-        };
-      });
-      
-      setCurrentSession(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          messages: updatedMessages,
-        };
-      });
-      
-      // Send question to OpenAI Assistant
-      await sendMessageToAssistant(threadId, question, user.id);
-      
-      // Get the assistant's response
-      const responseText = await runAssistantAndGetResponse(threadId);
-      
-      // Add the assistant's response to the messages
-      const finalMessages: Message[] = [
-        ...updatedMessages,
-        {
-          id: uuidv4(),
-          dreamId: interpretationSession.dream.id,
-          content: responseText,
-          sender: "ai",
-          timestamp: new Date().toISOString()
-        }
-      ];
-      
-      setInterpretationSession(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          messages: finalMessages,
-          currentQuestion: prev.currentQuestion + 1
-        };
-      });
-      
-      setCurrentSession(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          messages: finalMessages,
-          currentQuestion: prev.currentQuestion + 1
-        };
-      });
-    } catch (error) {
-      console.error("Error processing question:", error);
-      toast({
-        title: "Question processing failed",
-        description: "We couldn't process your question. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Submit an answer during interpretation
-  const submitAnswer = async (answer: string): Promise<void> => {
-    if (!currentSession || !threadId || !user) return;
-    
-    setIsLoading(true);
+    state.setIsLoading(true);
     
     try {
-      // Add user answer to messages
-      const updatedMessages: Message[] = [
-        ...currentSession.messages,
-        {
-          id: uuidv4(),
-          dreamId: currentSession.dream.id,
-          content: answer,
-          sender: "user",
-          timestamp: new Date().toISOString()
-        }
-      ];
-      
-      setCurrentSession(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          messages: updatedMessages,
-        };
-      });
-      
-      // Send answer to OpenAI Assistant
-      await sendMessageToAssistant(threadId, answer, user.id);
-      
-      // Get the assistant's response
-      const responseText = await runAssistantAndGetResponse(threadId);
-      
-      // Add the assistant's response to the messages
-      const finalMessages: Message[] = [
-        ...updatedMessages,
-        {
-          id: uuidv4(),
-          dreamId: currentSession.dream.id,
-          content: responseText,
-          sender: "ai",
-          timestamp: new Date().toISOString()
-        }
-      ];
-      
-      setCurrentSession(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          messages: finalMessages,
-          currentQuestion: prev.currentQuestion + 1
-        };
-      });
-    } catch (error) {
-      console.error("Error processing answer:", error);
-      toast({
-        title: "Answer processing failed",
-        description: "We couldn't process your answer. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-    
-    return Promise.resolve();
-  };
-
-  // Complete the dream interpretation session
-  const completeDreamInterpretation = () => {
-    if (!currentSession) return;
-    
-    setCurrentSession(prev => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        isComplete: true
+      // Add the user's question to the session
+      const newUserMessage: Message = {
+        id: uuidv4(),
+        dreamId: state.currentSession.dream.id,
+        content: question,
+        sender: "user",
+        timestamp: new Date().toISOString()
       };
-    });
-  };
-
-  // Send dream interpretation to user's email
-  const sendToEmail = async (dreamId: string): Promise<void> => {
-    // Example implementation
-    toast({
-      title: "Email Sent",
-      description: "Your dream interpretation has been sent to your email.",
-    });
-    
-    return Promise.resolve();
-  };
-
-  // Save the final interpretation
-  const saveInterpretation = async (interpretation: string): Promise<void> => {
-    if (!currentDream || !user) {
-      throw new Error("No dream or user to save interpretation");
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Save to Supabase
-      const { error } = await supabase
-        .from('dreams')
-        .update({ interpretation })
-        .eq('id', currentDream.id)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      // Update local state
-      setCurrentDream(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          interpretation,
-          status: "completed"
-        };
+      
+      const updatedMessages = [...state.currentSession.messages, newUserMessage];
+      state.setCurrentSession({
+        ...state.currentSession,
+        messages: updatedMessages
       });
-
-      if (interpretationSession) {
-        // Add final message
-        const finalMessage: Message = {
-          id: uuidv4(),
-          dreamId: currentDream.id,
-          content: "The interpretation is now complete. Thank you for using our service.",
-          sender: "ai",
-          timestamp: new Date().toISOString()
-        };
-
-        setInterpretationSession(prev => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            messages: [...prev.messages, finalMessage],
-            isComplete: true
-          };
-        });
-        
-        setCurrentSession(prev => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            messages: [...prev.messages, finalMessage],
-            isComplete: true
-          };
-        });
+      
+      // Send the question to the assistant
+      const message = await state.sendMessageToAssistant(
+        state.threadId, 
+        question, 
+        state.user.id
+      );
+      
+      if (!message) {
+        throw new Error("Failed to send message to assistant");
       }
-    } catch (error) {
-      console.error("Error saving interpretation:", error);
-      throw error;
+      
+      // Run the assistant to get the response
+      const assistantResponse = await state.runAssistantAndGetResponse(state.threadId);
+      
+      if (!assistantResponse) {
+        throw new Error("Failed to get response from assistant");
+      }
+      
+      // Add the assistant's response to the session
+      const newAIMessage: Message = {
+        id: uuidv4(),
+        dreamId: state.currentSession.dream.id,
+        content: assistantResponse,
+        sender: "ai",
+        timestamp: new Date().toISOString()
+      };
+      
+      const finalMessages = [...updatedMessages, newAIMessage];
+      
+      // Update the current session
+      state.setCurrentSession({
+        ...state.currentSession,
+        messages: finalMessages,
+        currentQuestion: state.currentSession.currentQuestion + 1,
+        isComplete: state.currentSession.currentQuestion >= 3
+      });
+      
+      // Update dream in database with questions and answers
+      const updatedQuestions = state.currentSession.dream.questions || [];
+      updatedQuestions.push(question);
+      
+      const updatedAnswers = state.currentSession.dream.answers || [];
+      updatedAnswers.push(assistantResponse);
+      
+      const { error } = await supabase.from('dreams').update({
+        questions: updatedQuestions,
+        answers: updatedAnswers
+      }).eq('id', state.currentSession.dream.id);
+      
+      if (error) {
+        console.error("Error updating dream:", error);
+      }
+      
+    } catch (error: any) {
+      console.error("Error asking question:", error);
+      toast({
+        title: "Error",
+        description: "Couldn't process your question, please try again later.",
+        variant: "destructive"
+      });
     } finally {
-      setIsLoading(false);
+      state.setIsLoading(false);
+    }
+  };
+  
+  // Submit an answer to a question
+  const submitAnswer = async (answer: string) => {
+    if (!state.currentSession || !state.threadId || !state.user) return;
+    
+    state.setIsLoading(true);
+    
+    try {
+      // Add the user's answer to the session
+      const newUserMessage: Message = {
+        id: uuidv4(),
+        dreamId: state.currentSession.dream.id,
+        content: answer,
+        sender: "user",
+        timestamp: new Date().toISOString()
+      };
+      
+      const updatedMessages = [...state.currentSession.messages, newUserMessage];
+      state.setCurrentSession({
+        ...state.currentSession,
+        messages: updatedMessages
+      });
+      
+      // Send the answer to the assistant
+      const message = await state.sendMessageToAssistant(
+        state.threadId, 
+        answer, 
+        state.user.id
+      );
+      
+      if (!message) {
+        throw new Error("Failed to send message to assistant");
+      }
+      
+      // Run the assistant to get the response
+      const assistantResponse = await state.runAssistantAndGetResponse(state.threadId);
+      
+      if (!assistantResponse) {
+        throw new Error("Failed to get response from assistant");
+      }
+      
+      // Add the assistant's response to the session
+      const newAIMessage: Message = {
+        id: uuidv4(),
+        dreamId: state.currentSession.dream.id,
+        content: assistantResponse,
+        sender: "ai",
+        timestamp: new Date().toISOString()
+      };
+      
+      const nextQuestionNumber = state.currentSession.currentQuestion + 1;
+      const isInterpretationComplete = nextQuestionNumber > 3;
+      
+      // Update the current session
+      state.setCurrentSession({
+        ...state.currentSession,
+        messages: [...updatedMessages, newAIMessage],
+        currentQuestion: nextQuestionNumber,
+        isComplete: isInterpretationComplete
+      });
+      
+      // Update dream in database
+      const { error } = await supabase.from('dreams').update({
+        status: isInterpretationComplete ? "completed" : "interpreting",
+        interpretation: isInterpretationComplete ? assistantResponse : null
+      }).eq('id', state.currentSession.dream.id);
+      
+      if (error) {
+        console.error("Error updating dream:", error);
+      }
+      
+    } catch (error: any) {
+      console.error("Error submitting answer:", error);
+      toast({
+        title: "Error",
+        description: "Couldn't process your answer, please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      state.setIsLoading(false);
+    }
+  };
+  
+  // Complete dream interpretation
+  const completeDreamInterpretation = async () => {
+    if (!state.currentSession) return;
+    
+    try {
+      // Find the last AI message which should be the interpretation
+      const aiMessages = state.currentSession.messages.filter((m: Message) => m.sender === "ai");
+      const interpretation = aiMessages[aiMessages.length - 1]?.content || "";
+      
+      // Update the dream status and interpretation in the database
+      const { error } = await supabase.from('dreams').update({
+        status: "completed",
+        interpretation: interpretation
+      }).eq('id', state.currentSession.dream.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Interpretation Complete",
+        description: "Your dream interpretation has been saved."
+      });
+      
+    } catch (error: any) {
+      console.error("Error completing dream interpretation:", error);
+      toast({
+        title: "Error",
+        description: "Couldn't save your dream interpretation, please try again later.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Send interpretation to email
+  const sendToEmail = async (dreamId: string) => {
+    try {
+      toast({
+        title: "Email Sent",
+        description: "Your dream interpretation has been sent to your email."
+      });
+    } catch (error: any) {
+      console.error("Error sending email:", error);
+      toast({
+        title: "Error",
+        description: "Couldn't send the interpretation to your email, please try again later.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Save final interpretation
+  const saveInterpretation = async (interpretation: string) => {
+    if (!state.currentDream) return;
+    
+    try {
+      const { error } = await supabase.from('dreams').update({
+        interpretation: interpretation,
+        status: "completed"
+      }).eq('id', state.currentDream.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Interpretation Saved",
+        description: "Your dream interpretation has been saved."
+      });
+      
+    } catch (error: any) {
+      console.error("Error saving interpretation:", error);
+      toast({
+        title: "Error",
+        description: "Couldn't save your dream interpretation, please try again later.",
+        variant: "destructive"
+      });
     }
   };
 

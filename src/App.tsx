@@ -12,6 +12,7 @@ import { DreamProvider } from "@/context/DreamContext";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import CompleteProfilePage from "./pages/CompleteProfilePage";
 import HomePage from "./pages/HomePage";
 import PaymentPage from "./pages/PaymentPage";
 import InterpretationPage from "./pages/InterpretationPage";
@@ -22,9 +23,9 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Protected route component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuth();
+// Protected route component that checks for profile completion
+const ProtectedRoute = ({ children, requireProfile = true }: { children: React.ReactNode, requireProfile?: boolean }) => {
+  const { user, isLoading, hasCompleteProfile } = useAuth();
   
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -32,6 +33,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+  
+  if (requireProfile && !hasCompleteProfile) {
+    return <Navigate to="/complete-profile" replace />;
   }
   
   return <>{children}</>;
@@ -43,6 +48,13 @@ const AppRoutes = () => {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      
+      {/* Profile completion route (accessible only when logged in) */}
+      <Route path="/complete-profile" element={
+        <ProtectedRoute requireProfile={false}>
+          <CompleteProfilePage />
+        </ProtectedRoute>
+      } />
       
       {/* Protected routes */}
       <Route path="/home" element={

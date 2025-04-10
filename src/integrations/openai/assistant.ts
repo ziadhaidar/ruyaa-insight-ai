@@ -126,7 +126,7 @@ ${content}`;
     return data;
   } catch (error) {
     console.error("Error adding message:", error);
-    return null;
+    throw error; // Rethrow to be caught by the calling function
   }
 };
 
@@ -167,13 +167,14 @@ export const runAssistant = async (threadId: string): Promise<OpenAIRun | null> 
     return data;
   } catch (error) {
     console.error("Error running assistant:", error);
-    return null;
+    throw error; // Rethrow to be caught by the calling function
   }
 };
 
 // Check the status of a run
 export const checkRunStatus = async (threadId: string, runId: string): Promise<OpenAIRun | null> => {
   try {
+    console.log(`Checking run status for thread ${threadId}, run ${runId}`);
     const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
       method: "GET",
       headers: {
@@ -193,7 +194,7 @@ export const checkRunStatus = async (threadId: string, runId: string): Promise<O
     return data;
   } catch (error) {
     console.error("Error checking run status:", error);
-    return null;
+    throw error; // Rethrow to be caught by the calling function
   }
 };
 
@@ -220,6 +221,6 @@ export const getMessages = async (threadId: string): Promise<OpenAIMessage[] | n
     return data.data;
   } catch (error) {
     console.error("Error getting messages:", error);
-    return null;
+    throw error; // Rethrow to be caught by the calling function
   }
 };

@@ -8,11 +8,14 @@ import { Avatar } from "./ui/avatar";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "./ui/badge";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "./ui/alert";
 
 const InterpretationChat = () => {
   const { currentSession, askQuestion, submitAnswer, isLoading } = useDream();
   const { user } = useAuth();
   const [messageContent, setMessageContent] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,31 +27,30 @@ const InterpretationChat = () => {
 
   const handleSendMessage = async () => {
     if (!messageContent.trim() || isLoading) return;
-
-    if (currentSession && currentSession.messages.length % 2 === 0) {
-      // It's the user's turn to ask a question
-      await askQuestion(messageContent);
-    } else {
-      // It's the user's turn to submit an answer
-      await submitAnswer(messageContent);
+    
+    setError(null);
+    
+    try {
+      if (currentSession && currentSession.messages.length % 2 === 0) {
+        // It's the user's turn to ask a question
+        await askQuestion(messageContent);
+      } else {
+        // It's the user's turn to submit an answer
+        await submitAnswer(messageContent);
+      }
+      
+      setMessageContent("");
+    } catch (err) {
+      console.error("Error in chat:", err);
+      setError("Failed to process your message. Please try again.");
     }
-
-    setMessageContent("");
   };
 
   // Check if the latest message is the final interpretation
   const isFinalInterpretation = () => {
     if (!currentSession) return false;
     
-    // The final interpretation is when we have 7 messages:
-    // 1. User's dream
-    // 2. AI's first question
-    // 3. User's first answer
-    // 4. AI's second question
-    // 5. User's second answer
-    // 6. AI's third question
-    // 7. User's third answer
-    // 8. AI's final interpretation
+    // The final interpretation is when we have at least 8 messages and completed all 3 questions
     return currentSession.messages.length >= 8 && 
            currentSession.currentQuestion > 3 &&
            currentSession.messages[currentSession.messages.length - 1].sender === 'ai';
@@ -112,6 +114,31 @@ const InterpretationChat = () => {
     }
   };
 
+  if (!currentSession) {
+    return (
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle>Dream Interpretation (AI Assistant)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center items-center py-16">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto rounded-full bg-primary/20 flex items-center justify-center">
+                  <AlertCircle className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+              <h3 className="text-lg font-medium mb-2">No Active Session</h3>
+              <p className="text-muted-foreground max-w-md">
+                Please submit a dream from the home page to start an interpretation session.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="max-w-4xl mx-auto">
       <CardHeader>
@@ -123,6 +150,12 @@ const InterpretationChat = () => {
         )}
       </CardHeader>
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <div className="space-y-4" style={{ maxHeight: '500px', overflowY: 'auto' }} ref={chatContainerRef}>
           {currentSession?.messages.map((message: Message) => (
             <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>

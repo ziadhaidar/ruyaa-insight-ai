@@ -9,19 +9,30 @@ export const useDreamActions = (state: any) => {
 
   // Process a dream interpretation request
   const processDreamInterpretation = async () => {
-    if (!state.currentDream || !state.user) return;
+    if (!state.currentDream || !state.user) {
+      toast({
+        title: "Error",
+        description: "No dream or user data found. Please try again.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     state.setIsLoading(true);
     
     try {
       // Create a new OpenAI thread
-      const threadId = state.threadId || await state.createAssistantThread();
+      let threadId = state.threadId;
       
       if (!threadId) {
-        throw new Error("Failed to create OpenAI thread");
+        threadId = await state.createAssistantThread();
+        
+        if (!threadId) {
+          throw new Error("Failed to create OpenAI thread");
+        }
+        
+        state.setThreadId(threadId);
       }
-      
-      state.setThreadId(threadId);
       
       // Send the dream to the assistant
       const message = await state.sendMessageToAssistant(
@@ -30,16 +41,8 @@ export const useDreamActions = (state: any) => {
         state.user.id
       );
       
-      if (!message) {
-        throw new Error("Failed to send message to assistant");
-      }
-      
       // Run the assistant to get the first question
       const assistantResponse = await state.runAssistantAndGetResponse(threadId);
-      
-      if (!assistantResponse) {
-        throw new Error("Failed to get response from assistant");
-      }
       
       // Create a new session with the messages
       const session: InterpretationSession = {
@@ -76,6 +79,11 @@ export const useDreamActions = (state: any) => {
       
       if (error) {
         console.error("Error saving dream:", error);
+        toast({
+          title: "Warning",
+          description: "Your dream interpretation has started, but there was an issue saving it to your history.",
+          variant: "destructive"
+        });
       }
       
     } catch (error: any) {
@@ -85,6 +93,7 @@ export const useDreamActions = (state: any) => {
         description: "Couldn't process your dream interpretation, please try again later.",
         variant: "destructive"
       });
+      throw error; // Re-throw to handle in the component
     } finally {
       state.setIsLoading(false);
     }
@@ -92,7 +101,14 @@ export const useDreamActions = (state: any) => {
   
   // Ask a follow-up question
   const askQuestion = async (question: string) => {
-    if (!state.currentSession || !state.threadId || !state.user) return;
+    if (!state.currentSession || !state.threadId || !state.user) {
+      toast({
+        title: "Error",
+        description: "No active session. Please start a new dream interpretation.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     state.setIsLoading(true);
     
@@ -113,22 +129,14 @@ export const useDreamActions = (state: any) => {
       });
       
       // Send the question to the assistant
-      const message = await state.sendMessageToAssistant(
+      await state.sendMessageToAssistant(
         state.threadId, 
         question, 
         state.user.id
       );
       
-      if (!message) {
-        throw new Error("Failed to send message to assistant");
-      }
-      
       // Run the assistant to get the response
       const assistantResponse = await state.runAssistantAndGetResponse(state.threadId);
-      
-      if (!assistantResponse) {
-        throw new Error("Failed to get response from assistant");
-      }
       
       // Add the assistant's response to the session
       const newAIMessage: Message = {
@@ -172,6 +180,7 @@ export const useDreamActions = (state: any) => {
         description: "Couldn't process your question, please try again later.",
         variant: "destructive"
       });
+      throw error; // Re-throw to handle in component
     } finally {
       state.setIsLoading(false);
     }
@@ -179,7 +188,14 @@ export const useDreamActions = (state: any) => {
   
   // Submit an answer to a question
   const submitAnswer = async (answer: string) => {
-    if (!state.currentSession || !state.threadId || !state.user) return;
+    if (!state.currentSession || !state.threadId || !state.user) {
+      toast({
+        title: "Error",
+        description: "No active session. Please start a new dream interpretation.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     state.setIsLoading(true);
     
@@ -200,22 +216,14 @@ export const useDreamActions = (state: any) => {
       });
       
       // Send the answer to the assistant
-      const message = await state.sendMessageToAssistant(
+      await state.sendMessageToAssistant(
         state.threadId, 
         answer, 
         state.user.id
       );
       
-      if (!message) {
-        throw new Error("Failed to send message to assistant");
-      }
-      
       // Run the assistant to get the response
       const assistantResponse = await state.runAssistantAndGetResponse(state.threadId);
-      
-      if (!assistantResponse) {
-        throw new Error("Failed to get response from assistant");
-      }
       
       // Add the assistant's response to the session
       const newAIMessage: Message = {
@@ -254,6 +262,7 @@ export const useDreamActions = (state: any) => {
         description: "Couldn't process your answer, please try again later.",
         variant: "destructive"
       });
+      throw error; // Re-throw to handle in component
     } finally {
       state.setIsLoading(false);
     }

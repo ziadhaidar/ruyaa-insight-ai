@@ -20,6 +20,7 @@ import DreamsPage from "./pages/DreamsPage";
 import DreamDetailPage from "./pages/DreamDetailPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const AppRoutes = () => {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/auth" element={<Index />} />
       
       {/* Profile completion route (accessible only when logged in) */}
       <Route path="/complete-profile" element={

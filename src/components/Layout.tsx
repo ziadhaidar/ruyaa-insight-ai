@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { Moon, Sun, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -27,21 +27,37 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     navigate("/");
   };
 
+  const closeSheet = () => {
+    setIsOpen(false);
+  };
+
   const NavItems = () => (
     <>
-      <Button variant="ghost" onClick={() => navigate("/")}>
+      <Button variant="ghost" onClick={() => {
+        navigate("/home");
+        closeSheet();
+      }}>
         {t("appName")}
       </Button>
       
       {user && (
         <>
-          <Button variant="ghost" onClick={() => navigate("/dreams")}>
+          <Button variant="ghost" onClick={() => {
+            navigate("/dreams");
+            closeSheet();
+          }}>
             {t("pastDreams")}
           </Button>
-          <Button variant="ghost" onClick={() => navigate("/settings")}>
+          <Button variant="ghost" onClick={() => {
+            navigate("/settings");
+            closeSheet();
+          }}>
             {t("settings")}
           </Button>
-          <Button variant="destructive" onClick={handleLogout}>
+          <Button variant="destructive" onClick={() => {
+            handleLogout();
+            closeSheet();
+          }}>
             {t("logout")}
           </Button>
         </>
@@ -49,10 +65,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       
       {!user && (
         <>
-          <Button variant="ghost" onClick={() => navigate("/login")}>
+          <Button variant="ghost" onClick={() => {
+            navigate("/login");
+            closeSheet();
+          }}>
             {t("login")}
           </Button>
-          <Button variant="default" onClick={() => navigate("/register")}>
+          <Button variant="default" onClick={() => {
+            navigate("/register");
+            closeSheet();
+          }}>
             {t("register")}
           </Button>
         </>
@@ -68,7 +90,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex items-center">
             <h1 
               className="text-2xl font-bold cursor-pointer" 
-              onClick={() => navigate("/")}
+              onClick={() => navigate(user ? "/home" : "/")}
             >
               {t("appName")}
             </h1>

@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
 import LanguageSelector from "@/components/LanguageSelector";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Form,
@@ -24,7 +24,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Separator } from "@/components/ui/separator";
 
 const profileFormSchema = z.object({
   age: z.coerce.number().min(13, { message: "You must be at least 13 years old" }),
@@ -38,7 +37,7 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 const SettingsPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const { user, refreshProfileStatus } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -141,6 +140,9 @@ const SettingsPage: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
+                <CardDescription>
+                  Update your personal information which helps customize your dream interpretations
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Form {...form}>
@@ -304,9 +306,25 @@ const SettingsPage: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>{t("languageSettings")}</CardTitle>
+                <CardDescription>
+                  Change the application language
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <LanguageSelector />
+                <RadioGroup
+                  value={language}
+                  onValueChange={(value) => setLanguage(value as "en" | "ar")}
+                  className="space-y-3"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="en" id="en" />
+                    <Label htmlFor="en">{t("english")}</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="ar" id="ar" />
+                    <Label htmlFor="ar">{t("arabic")}</Label>
+                  </div>
+                </RadioGroup>
               </CardContent>
             </Card>
           </TabsContent>
@@ -315,6 +333,9 @@ const SettingsPage: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>{t("contactSupport")}</CardTitle>
+                <CardDescription>
+                  Get help with your account or dream interpretations
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-4">

@@ -79,9 +79,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setTimeout(async () => {
             const isComplete = await checkProfileCompletion(session.user.id);
             
-            // Redirect to profile completion if needed
+            // Redirect to profile completion if needed and event is SIGNED_IN
             if (event === 'SIGNED_IN' && !isComplete) {
               navigate('/complete-profile');
+            } else if (event === 'SIGNED_IN' && isComplete) {
+              // If profile is complete, navigate to /home
+              navigate('/home');
             }
           }, 0);
         }
@@ -132,26 +135,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
     }
   }, [navigate, toast]);
-
-  useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log("Auth state changed:", event, session);
-        setSession(session);
-        setUser(session?.user ?? null);
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -232,6 +215,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Navigate to home page after logout
+      navigate('/');
     } catch (error: any) {
       console.error("Logout error:", error);
       toast({

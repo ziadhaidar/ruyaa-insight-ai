@@ -1,101 +1,99 @@
-
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "./ui/button";
 import { useDream } from "@/context/DreamContext";
-import { Send, Mail } from "lucide-react";
-import LoadingAnimation from "./LoadingAnimation";
+import { Message } from "@/types";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
+import { Avatar } from "./ui/avatar";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
+import { useAuth } from "@/context/AuthContext";
 
-const InterpretationChat: React.FC = () => {
-  const { currentSession, submitAnswer, completeDreamInterpretation, sendToEmail } = useDream();
-  const [userInput, setUserInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
+const InterpretationChat = () => {
+  const { currentSession, askQuestion, submitAnswer, isLoading } = useDream();
+  const { user } = useAuth();
+  const [messageContent, setMessageContent] = useState("");
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userInput.trim() || !currentSession) return;
-
-    const input = userInput;
-    setUserInput("");
-    setIsLoading(true);
-    
-    try {
-      await submitAnswer(input);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleComplete = () => {
-    completeDreamInterpretation();
-    navigate("/dreams");
-  };
-
-  // Scroll to bottom of chat
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll to the bottom of the chat on message updates
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   }, [currentSession?.messages]);
 
-  if (!currentSession) {
-    navigate("/home");
-    return null;
-  }
+  const handleSendMessage = async () => {
+    if (!messageContent.trim()) return;
+
+    if (currentSession && currentSession.messages.length % 2 === 0) {
+      // It's the user's turn to ask a question
+      askQuestion(messageContent);
+    } else {
+      // It's the user's turn to submit an answer
+      await submitAnswer(messageContent);
+    }
+
+    setMessageContent("");
+  };
 
   return (
-    <div className="h-[calc(100vh-14rem)] max-w-2xl mx-auto flex flex-col">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Dream Interpretation</h2>
-        {currentSession.isComplete && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => sendToEmail(currentSession.dream.id)}
-          >
-            <Mail className="mr-2 h-4 w-4" />
-            Send to Email
-          </Button>
-        )}
-      </div>
-      
-      <div className="flex-1 overflow-y-auto mb-4 p-4 bg-background/50 rounded-lg border">
-        {currentSession.messages.map((message, index) => (
-          <div 
-            key={index}
-            className={message.sender === "user" ? "user-message" : "ai-message"}
-            dangerouslySetInnerHTML={{ __html: message.content }}
+    <Card className="max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle>Dream Interpretation (AI Assistant)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4" style={{ maxHeight: '500px', overflowY: 'auto' }} ref={chatContainerRef}>
+          {currentSession?.messages.map((message: Message) => (
+            <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className="flex items-center space-x-2">
+                {message.sender === 'ai' && (
+                  <Avatar className="w-8 h-8">
+                    <img src="/ai_avatar.png" alt="AI Avatar" />
+                    <Avatar />
+                  </Avatar>
+                )}
+                <div className={`rounded-lg p-3 text-sm ${message.sender === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+                  {message.content}
+                </div>
+                {message.sender === 'user' && (
+                  <Avatar className="w-8 h-8">
+                    {user?.email ? user.email[0].toUpperCase() : 'U'}
+                    <Avatar />
+                  </Avatar>
+                )}
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="flex items-center space-x-2">
+                <Avatar className="w-8 h-8">
+                  <img src="/ai_avatar.png" alt="AI Avatar" />
+                  <Avatar />
+                </Avatar>
+                <div className="rounded-lg p-3 text-sm bg-secondary text-secondary-foreground">
+                  Thinking...
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </CardContent>
+      <CardFooter>
+        <div className="w-full flex items-center space-x-4">
+          <Textarea
+            placeholder="Type your message here..."
+            value={messageContent}
+            onChange={(e) => setMessageContent(e.target.value)}
+            className="flex-grow"
           />
-        ))}
-        
-        {isLoading && (
-          <div className="ai-message p-0 bg-transparent">
-            <LoadingAnimation message="Analyzing your dream..." />
-          </div>
-        )}
-        
-        <div ref={messagesEndRef} />
-      </div>
-      
-      {!currentSession.isComplete ? (
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <input
-            className="flex-1 px-4 py-2 rounded-md border bg-background"
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            placeholder="Type your answer..."
-            disabled={isLoading}
-          />
-          <Button type="submit" disabled={!userInput.trim() || isLoading}>
-            <Send className="h-4 w-4" />
+          <Button onClick={handleSendMessage} disabled={isLoading}>
+            {currentSession && currentSession.messages.length % 2 === 0 ? "Ask Question" : "Submit Answer"}
           </Button>
-        </form>
-      ) : (
-        <Button onClick={handleComplete} className="w-full">
-          Return to Dreams
-        </Button>
-      )}
-    </div>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Powered by OpenAI GPT Assistant for Islamic dream interpretation
+        </p>
+      </CardFooter>
+    </Card>
   );
 };
 

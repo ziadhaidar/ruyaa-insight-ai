@@ -39,6 +39,42 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          age: number | null
+          created_at: string | null
+          gender: string | null
+          has_kids: boolean | null
+          has_pets: boolean | null
+          id: string
+          marital_status: string | null
+          updated_at: string | null
+          work_status: string | null
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string | null
+          gender?: string | null
+          has_kids?: boolean | null
+          has_pets?: boolean | null
+          id: string
+          marital_status?: string | null
+          updated_at?: string | null
+          work_status?: string | null
+        }
+        Update: {
+          age?: number | null
+          created_at?: string | null
+          gender?: string | null
+          has_kids?: boolean | null
+          has_pets?: boolean | null
+          id?: string
+          marital_status?: string | null
+          updated_at?: string | null
+          work_status?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

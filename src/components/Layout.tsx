@@ -19,7 +19,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -33,31 +33,47 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const NavItems = () => (
     <>
-      <Button variant="ghost" onClick={() => {
-        navigate("/home");
-        closeSheet();
-      }}>
+      <Button 
+        variant="ghost" 
+        className={language === 'ar' ? 'font-cairo' : 'font-playfair'} 
+        onClick={() => {
+          navigate("/home");
+          closeSheet();
+        }}
+      >
         {t("appName")}
       </Button>
       
       {user && (
         <>
-          <Button variant="ghost" onClick={() => {
-            navigate("/dreams");
-            closeSheet();
-          }}>
+          <Button 
+            variant="ghost" 
+            className={language === 'ar' ? 'font-cairo' : ''} 
+            onClick={() => {
+              navigate("/dreams");
+              closeSheet();
+            }}
+          >
             {t("pastDreams")}
           </Button>
-          <Button variant="ghost" onClick={() => {
-            navigate("/settings");
-            closeSheet();
-          }}>
+          <Button 
+            variant="ghost" 
+            className={language === 'ar' ? 'font-cairo' : ''} 
+            onClick={() => {
+              navigate("/settings");
+              closeSheet();
+            }}
+          >
             {t("settings")}
           </Button>
-          <Button variant="destructive" onClick={() => {
-            handleLogout();
-            closeSheet();
-          }}>
+          <Button 
+            variant="destructive" 
+            className={language === 'ar' ? 'font-cairo' : ''} 
+            onClick={() => {
+              handleLogout();
+              closeSheet();
+            }}
+          >
             {t("logout")}
           </Button>
         </>
@@ -65,16 +81,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       
       {!user && (
         <>
-          <Button variant="ghost" onClick={() => {
-            navigate("/login");
-            closeSheet();
-          }}>
+          <Button 
+            variant="ghost" 
+            className={language === 'ar' ? 'font-cairo' : ''} 
+            onClick={() => {
+              navigate("/login");
+              closeSheet();
+            }}
+          >
             {t("login")}
           </Button>
-          <Button variant="default" onClick={() => {
-            navigate("/register");
-            closeSheet();
-          }}>
+          <Button 
+            variant="default" 
+            className={language === 'ar' ? 'font-cairo islamic-gradient-btn' : 'islamic-gradient-btn'} 
+            onClick={() => {
+              navigate("/register");
+              closeSheet();
+            }}
+          >
             {t("register")}
           </Button>
         </>
@@ -85,11 +109,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col islamic-pattern-bg">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-islamic-gold/10">
         <div className="container mx-auto py-4 flex justify-between items-center">
           <div className="flex items-center">
             <h1 
-              className="text-2xl font-bold cursor-pointer" 
+              className={`text-2xl font-bold cursor-pointer animate-pulse-subtle ${language === 'ar' ? 'font-cairo' : 'font-playfair'}`}
               onClick={() => navigate(user ? "/home" : "/")}
             >
               {t("appName")}
@@ -128,9 +152,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-4">
+      <footer className="bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-6 border-t border-islamic-gold/10">
         <div className="container mx-auto text-center">
-          <p>© 2025 {t("appName")} - {t("landing2")}</p>
+          <p className={language === 'ar' ? 'font-cairo' : 'font-playfair'}>© 2025 {t("appName")} - {t("landing2")}</p>
         </div>
       </footer>
     </div>

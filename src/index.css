@@ -1,5 +1,5 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Lateef:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Lateef:wght@400;600;700&family=Cairo:wght@400;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -114,7 +114,12 @@
 
 @layer components {
   .quran-verse {
-    @apply p-4 rounded-lg bg-islamic-pattern my-4 border border-islamic-green/20;
+    @apply p-6 rounded-lg bg-islamic-pattern my-6 border border-islamic-gold/30 shadow-md relative overflow-hidden;
+  }
+  
+  .quran-verse::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-islamic-gold/5 to-islamic-green/5 pointer-events-none;
   }
   
   .message-bubble {
@@ -130,10 +135,14 @@
   }
 
   .islamic-gradient-btn {
-    @apply bg-gradient-to-r from-islamic-green to-islamic-green-dark text-white font-medium py-2 px-4 rounded-md hover:opacity-90 transition-opacity;
+    @apply bg-gradient-to-r from-islamic-green to-islamic-green-dark text-white font-medium py-2 px-4 rounded-md hover:opacity-90 transition-all duration-300 hover:shadow-md transform hover:-translate-y-1;
+  }
+  
+  .gold-gradient-btn {
+    @apply bg-gradient-to-r from-islamic-gold to-islamic-gold-dark text-islamic-black font-medium py-2 px-4 rounded-md hover:opacity-90 transition-all duration-300 hover:shadow-md transform hover:-translate-y-1;
   }
   
   .pattern-divider {
-    @apply h-px w-full bg-gradient-to-r from-transparent via-islamic-gold to-transparent my-6;
+    @apply h-px w-full bg-gradient-to-r from-transparent via-islamic-gold to-transparent my-8;
   }
 }

@@ -112,6 +112,18 @@ export default {
 				'pulse-subtle': {
 					'0%, 100%': { opacity: '1' },
 					'50%': { opacity: '0.8' },
+				},
+				'soft-glow': {
+					'0%, 100%': { 
+						filter: 'drop-shadow(0 0 5px rgba(212, 175, 55, 0.3))'
+					},
+					'50%': { 
+						filter: 'drop-shadow(0 0 15px rgba(212, 175, 55, 0.6))'
+					}
+				},
+				'float': {
+					'0%, 100%': { transform: 'translateY(0px)' },
+					'50%': { transform: 'translateY(-5px)' }
 				}
 			},
 			animation: {
@@ -119,14 +131,19 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'fade-in': 'fade-in 0.5s ease-in-out',
 				'pulse-subtle': 'pulse-subtle 3s infinite',
+				'soft-glow': 'soft-glow 3s infinite ease-in-out',
+				'float': 'float 3s infinite ease-in-out'
 			},
 			fontFamily: {
 				arabic: ['Amiri', 'serif'],
 				lateef: ['Lateef', 'serif'],
+				cairo: ['Cairo', 'sans-serif'],
+				playfair: ['Playfair Display', 'serif']
 			},
 			backgroundImage: {
 				'islamic-pattern': "url('/patterns/islamic-pattern.svg')",
 				'islamic-gradient': 'linear-gradient(to right, #0A5F38, #1D4D4F)',
+				'dawn-gradient': 'linear-gradient(to right, #1D4D4F, #F5F5DC)'
 			}
 		}
 	},

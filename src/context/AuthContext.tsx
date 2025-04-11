@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,9 +26,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Check profile completion status
   const checkProfileCompletion = async (userId: string) => {
     try {
+      console.log("Checking profile completion for user:", userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('age, gender, marital_status, has_kids, has_pets, work_status')
@@ -41,7 +40,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      // Check if all required fields are present
       const isComplete = data && 
         data.age !== null && 
         data.gender !== null && 
@@ -61,48 +59,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshProfileStatus = async () => {
     if (user) {
-      await checkProfileCompletion(user.id);
+      const isComplete = await checkProfileCompletion(user.id);
+      console.log("Profile refreshed, completion status:", isComplete);
+      return isComplete;
     }
+    return false;
   };
 
-  // Handle authentication state changes
   useEffect(() => {
-    const handleAuthChange = async (event: string, session: Session | null) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth state changed:", event, session);
+      
       setSession(session);
       setUser(session?.user ?? null);
       
-      // Check profile completion on auth state change
       if (session?.user) {
-        const isComplete = await checkProfileCompletion(session.user.id);
-        
-        // Redirect to profile completion if needed and event is SIGNED_IN
-        if (event === 'SIGNED_IN' && !isComplete) {
-          navigate('/complete-profile');
-        } else if (event === 'SIGNED_IN' && isComplete) {
-          // If profile is complete, navigate to /dreams
-          navigate('/dreams');
-        }
+        setTimeout(async () => {
+          const isComplete = await checkProfileCompletion(session.user.id);
+          console.log("Profile completion after auth change:", isComplete);
+          
+          if (event === 'SIGNED_IN') {
+            if (!isComplete) {
+              console.log("Redirecting to complete profile");
+              navigate('/complete-profile', { replace: true });
+            } else {
+              console.log("Profile is complete, navigating to dreams");
+              navigate('/dreams', { replace: true });
+            }
+          }
+        }, 100);
       }
-    };
+    });
 
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        // First update state synchronously
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Then use setTimeout to handle redirects asynchronously to avoid recursive updates
-        if (session?.user) {
-          setTimeout(() => {
-            handleAuthChange(event, session);
-          }, 0);
-        }
-      }
-    );
-
-    // THEN check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -117,18 +105,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Check for hash fragment in URL that indicates a redirect from OAuth
   useEffect(() => {
-    // This handles the OAuth redirects
     if (window.location.hash && window.location.hash.includes('access_token')) {
-      // Process the hash fragment
       supabase.auth.getSession().then(async ({ data: { session } }) => {
         if (session) {
           console.log("OAuth session found:", session);
           setSession(session);
           setUser(session?.user ?? null);
           
-          // Check if the user has a complete profile
           const isComplete = await checkProfileCompletion(session.user.id);
           
           toast({
@@ -136,11 +120,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             description: "Welcome to Nour Al Ruyaa",
           });
           
-          // Redirect based on profile completion
           if (!isComplete) {
-            navigate("/complete-profile");
+            navigate("/complete-profile", { replace: true });
           } else {
-            navigate("/dreams");
+            navigate("/dreams", { replace: true });
           }
         }
       });
@@ -174,7 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}`, // Change to the root URL without trailing slash
+          redirectTo: `${window.location.origin}`,
         }
       });
       
@@ -227,7 +210,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
-      // Navigate to home page after logout
       navigate('/');
     } catch (error: any) {
       console.error("Logout error:", error);

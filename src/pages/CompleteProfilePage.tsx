@@ -67,6 +67,7 @@ const CompleteProfilePage: React.FC = () => {
     const checkProfileStatus = async () => {
       if (!user) return;
 
+      console.log("Checking profile status on component mount");
       try {
         // Check if the user has a complete profile
         const { data, error } = await supabase
@@ -90,6 +91,8 @@ const CompleteProfilePage: React.FC = () => {
           data.has_pets !== null && 
           data.work_status !== null;
 
+        console.log("Profile complete status:", isProfileComplete, data);
+        
         if (isProfileComplete) {
           // If profile is complete, redirect to dreams page
           toast({
@@ -123,6 +126,7 @@ const CompleteProfilePage: React.FC = () => {
       if (!user || isCheckingProfile) return;
 
       try {
+        console.log("Fetching existing profile data");
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -135,6 +139,7 @@ const CompleteProfilePage: React.FC = () => {
         }
 
         if (data) {
+          console.log("Existing profile data:", data);
           // Set default values from existing profile
           form.setValue('age', data.age || undefined);
           form.setValue('gender', data.gender || undefined);
@@ -155,23 +160,55 @@ const CompleteProfilePage: React.FC = () => {
     if (!user) return;
     
     setIsLoading(true);
+    console.log("Form submitted with values:", values);
     
     try {
-      const { error } = await supabase.from('profiles').update({
-        age: values.age,
-        gender: values.gender,
-        marital_status: values.maritalStatus,
-        has_kids: values.hasKids === "yes",
-        has_pets: values.hasPets === "yes",
-        work_status: values.workStatus
-      }).eq('id', user.id);
+      // First get the existing profile to confirm it exists
+      const { data: existingProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+        
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error("Error checking if profile exists:", fetchError);
+        throw fetchError;
+      }
       
-      if (error) {
-        throw error;
+      // If profile doesn't exist, create it; otherwise update it
+      let updateError;
+      if (!existingProfile) {
+        console.log("Creating new profile");
+        const { error } = await supabase.from('profiles').insert({
+          id: user.id,
+          age: values.age,
+          gender: values.gender,
+          marital_status: values.maritalStatus,
+          has_kids: values.hasKids === "yes",
+          has_pets: values.hasPets === "yes",
+          work_status: values.workStatus
+        });
+        updateError = error;
+      } else {
+        console.log("Updating existing profile");
+        const { error } = await supabase.from('profiles').update({
+          age: values.age,
+          gender: values.gender,
+          marital_status: values.maritalStatus,
+          has_kids: values.hasKids === "yes",
+          has_pets: values.hasPets === "yes",
+          work_status: values.workStatus
+        }).eq('id', user.id);
+        updateError = error;
+      }
+      
+      if (updateError) {
+        throw updateError;
       }
       
       // Force refresh profile status in auth context
-      await refreshProfileStatus();
+      const isComplete = await refreshProfileStatus();
+      console.log("Profile refreshed after save, completion status:", isComplete);
       
       toast({
         title: "Profile updated",
@@ -181,6 +218,7 @@ const CompleteProfilePage: React.FC = () => {
       // Use replace: true to prevent going back to the form
       // Add a slight delay to ensure refreshProfileStatus has completed
       setTimeout(() => {
+        console.log("Redirecting to dreams page after successful profile save");
         navigate("/dreams", { replace: true });
       }, 100);
     } catch (error: any) {

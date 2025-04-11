@@ -17,3 +17,40 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     detectSessionInUrl: true,
   }
 });
+
+// Add SQL migrations for security fixes:
+/*
+-- Fix the handle_new_user function with proper security settings
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id)
+  VALUES (NEW.id);
+  RETURN NEW;
+END;
+$$;
+
+-- Add RLS policies to profiles table
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Create policy that only allows users to see their own profile
+CREATE POLICY "Users can view own profile"
+ON public.profiles
+FOR SELECT
+USING (auth.uid() = id);
+
+-- Create policy that only allows users to update their own profile
+CREATE POLICY "Users can update own profile"
+ON public.profiles
+FOR UPDATE
+USING (auth.uid() = id);
+
+-- Restrict anonymous access
+CREATE POLICY "No anonymous access"
+ON public.profiles
+FOR ALL
+USING (auth.role() <> 'anon');
+*/

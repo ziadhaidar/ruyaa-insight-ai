@@ -29,10 +29,12 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children, requireProfile = true }: { children: React.ReactNode, requireProfile?: boolean }) => {
   const { user, isLoading, hasCompleteProfile } = useAuth();
   const [isChecking, setIsChecking] = useState(true);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
   useEffect(() => {
     // Wait for auth to initialize
     if (!isLoading) {
+      console.log("Protected route check - user:", !!user, "hasCompleteProfile:", hasCompleteProfile);
       // Give a small delay to ensure hasCompleteProfile is updated
       const timer = setTimeout(() => {
         setIsChecking(false);
@@ -47,10 +49,13 @@ const ProtectedRoute = ({ children, requireProfile = true }: { children: React.R
   }
   
   if (!user) {
+    console.log("No user, redirecting to login");
     return <Navigate to="/login" replace />;
   }
   
-  if (requireProfile && !hasCompleteProfile) {
+  if (requireProfile && !hasCompleteProfile && !isRedirecting) {
+    console.log("Profile incomplete, redirecting to complete-profile");
+    setIsRedirecting(true); // Prevent multiple redirects
     return <Navigate to="/complete-profile" replace />;
   }
   

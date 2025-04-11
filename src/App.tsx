@@ -21,14 +21,28 @@ import DreamDetailPage from "./pages/DreamDetailPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
+import { useEffect, useState } from "react";
 
 const queryClient = new QueryClient();
 
 // Protected route component that checks for profile completion
 const ProtectedRoute = ({ children, requireProfile = true }: { children: React.ReactNode, requireProfile?: boolean }) => {
   const { user, isLoading, hasCompleteProfile } = useAuth();
+  const [isChecking, setIsChecking] = useState(true);
   
-  if (isLoading) {
+  useEffect(() => {
+    // Wait for auth to initialize
+    if (!isLoading) {
+      // Give a small delay to ensure hasCompleteProfile is updated
+      const timer = setTimeout(() => {
+        setIsChecking(false);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, hasCompleteProfile]);
+  
+  if (isLoading || isChecking) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
   

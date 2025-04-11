@@ -67,26 +67,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Handle authentication state changes
   useEffect(() => {
+    const handleAuthChange = async (event: string, session: Session | null) => {
+      console.log("Auth state changed:", event, session);
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      // Check profile completion on auth state change
+      if (session?.user) {
+        const isComplete = await checkProfileCompletion(session.user.id);
+        
+        // Redirect to profile completion if needed and event is SIGNED_IN
+        if (event === 'SIGNED_IN' && !isComplete) {
+          navigate('/complete-profile');
+        } else if (event === 'SIGNED_IN' && isComplete) {
+          // If profile is complete, navigate to /dreams
+          navigate('/dreams');
+        }
+      }
+    };
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state changed:", event, session);
+      (event, session) => {
+        // First update state synchronously
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Check profile completion on auth state change
+        // Then use setTimeout to handle redirects asynchronously to avoid recursive updates
         if (session?.user) {
-          // Use setTimeout to prevent recursive updates
-          setTimeout(async () => {
-            const isComplete = await checkProfileCompletion(session.user.id);
-            
-            // Redirect to profile completion if needed and event is SIGNED_IN
-            if (event === 'SIGNED_IN' && !isComplete) {
-              navigate('/complete-profile');
-            } else if (event === 'SIGNED_IN' && isComplete) {
-              // If profile is complete, navigate to /dreams
-              navigate('/dreams');
-            }
+          setTimeout(() => {
+            handleAuthChange(event, session);
           }, 0);
         }
       }

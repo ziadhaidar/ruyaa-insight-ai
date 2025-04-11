@@ -96,7 +96,14 @@ const CompleteProfilePage: React.FC = () => {
             title: "Profile already complete",
             description: "You have already completed your profile",
           });
-          navigate("/dreams");
+          
+          // Force refresh profile status in auth context before navigating
+          await refreshProfileStatus();
+          
+          // Give time for the status to update before navigation
+          setTimeout(() => {
+            navigate("/dreams", { replace: true });
+          }, 100);
           return;
         }
 
@@ -108,7 +115,7 @@ const CompleteProfilePage: React.FC = () => {
     };
 
     checkProfileStatus();
-  }, [user, navigate, toast]);
+  }, [user, navigate, toast, refreshProfileStatus]);
 
   // Fetch existing profile data if available
   useEffect(() => {
@@ -163,6 +170,7 @@ const CompleteProfilePage: React.FC = () => {
         throw error;
       }
       
+      // Force refresh profile status in auth context
       await refreshProfileStatus();
       
       toast({
@@ -170,8 +178,11 @@ const CompleteProfilePage: React.FC = () => {
         description: "Your profile has been successfully completed",
       });
       
-      // Redirect to dreams page after successful submission
-      navigate("/dreams");
+      // Use replace: true to prevent going back to the form
+      // Add a slight delay to ensure refreshProfileStatus has completed
+      setTimeout(() => {
+        navigate("/dreams", { replace: true });
+      }, 100);
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({

@@ -45,10 +45,11 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 const CompleteProfilePage: React.FC = () => {
-  const { user, refreshProfileStatus } = useAuth();
+  const { user, refreshProfileStatus, hasCompleteProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingProfile, setIsCheckingProfile] = useState(true);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -61,10 +62,58 @@ const CompleteProfilePage: React.FC = () => {
     },
   });
 
+  // Check if the user already has a complete profile and redirect if needed
+  useEffect(() => {
+    const checkProfileStatus = async () => {
+      if (!user) return;
+
+      try {
+        // Check if the user has a complete profile
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('age, gender, marital_status, has_kids, has_pets, work_status')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error("Error checking profile:", error);
+          setIsCheckingProfile(false);
+          return;
+        }
+
+        // Check if all required fields are present
+        const isProfileComplete = data && 
+          data.age !== null && 
+          data.gender !== null && 
+          data.marital_status !== null && 
+          data.has_kids !== null && 
+          data.has_pets !== null && 
+          data.work_status !== null;
+
+        if (isProfileComplete) {
+          // If profile is complete, redirect to dreams page
+          toast({
+            title: "Profile already complete",
+            description: "You have already completed your profile",
+          });
+          navigate("/dreams");
+          return;
+        }
+
+        setIsCheckingProfile(false);
+      } catch (error) {
+        console.error("Error checking profile status:", error);
+        setIsCheckingProfile(false);
+      }
+    };
+
+    checkProfileStatus();
+  }, [user, navigate, toast]);
+
   // Fetch existing profile data if available
   useEffect(() => {
     const getProfileData = async () => {
-      if (!user) return;
+      if (!user || isCheckingProfile) return;
 
       try {
         const { data, error } = await supabase
@@ -93,7 +142,7 @@ const CompleteProfilePage: React.FC = () => {
     };
 
     getProfileData();
-  }, [user, form]);
+  }, [user, form, isCheckingProfile]);
 
   const onSubmit = async (values: ProfileFormValues) => {
     if (!user) return;
@@ -121,7 +170,8 @@ const CompleteProfilePage: React.FC = () => {
         description: "Your profile has been successfully completed",
       });
       
-      navigate("/home");
+      // Redirect to dreams page after successful submission
+      navigate("/dreams");
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({
@@ -133,6 +183,18 @@ const CompleteProfilePage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  if (isCheckingProfile) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <p className="text-lg">Checking profile status...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

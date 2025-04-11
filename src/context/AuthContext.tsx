@@ -50,6 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         data.has_pets !== null && 
         data.work_status !== null;
       
+      console.log("Profile completion status:", isComplete, data);
       setHasCompleteProfile(!!isComplete);
       return !!isComplete;
     } catch (error) {
@@ -83,8 +84,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (event === 'SIGNED_IN' && !isComplete) {
               navigate('/complete-profile');
             } else if (event === 'SIGNED_IN' && isComplete) {
-              // If profile is complete, navigate to /home
-              navigate('/home');
+              // If profile is complete, navigate to /dreams
+              navigate('/dreams');
             }
           }, 0);
         }
@@ -129,7 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (!isComplete) {
             navigate("/complete-profile");
           } else {
-            navigate("/home");
+            navigate("/dreams");
           }
         }
       });

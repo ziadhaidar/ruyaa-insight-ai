@@ -29,34 +29,36 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children, requireProfile = true }: { children: React.ReactNode, requireProfile?: boolean }) => {
   const { user, isLoading, hasCompleteProfile } = useAuth();
   const [isChecking, setIsChecking] = useState(true);
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
   
   useEffect(() => {
-    // Wait for auth to initialize
     if (!isLoading) {
       console.log("Protected route check - user:", !!user, "hasCompleteProfile:", hasCompleteProfile);
-      // Give a small delay to ensure hasCompleteProfile is updated
+      
+      if (!user) {
+        setRedirectPath("/login");
+      } else if (requireProfile && !hasCompleteProfile) {
+        setRedirectPath("/complete-profile");
+      } else {
+        setRedirectPath(null);
+      }
+      
+      // Short delay to ensure everything is updated
       const timer = setTimeout(() => {
         setIsChecking(false);
       }, 300);
       
       return () => clearTimeout(timer);
     }
-  }, [isLoading, hasCompleteProfile]);
+  }, [isLoading, user, hasCompleteProfile, requireProfile]);
   
   if (isLoading || isChecking) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
   
-  if (!user) {
-    console.log("No user, redirecting to login");
-    return <Navigate to="/login" replace />;
-  }
-  
-  if (requireProfile && !hasCompleteProfile && !isRedirecting) {
-    console.log("Profile incomplete, redirecting to complete-profile");
-    setIsRedirecting(true); // Prevent multiple redirects
-    return <Navigate to="/complete-profile" replace />;
+  if (redirectPath) {
+    console.log(`Redirecting to ${redirectPath}`);
+    return <Navigate to={redirectPath} replace />;
   }
   
   return <>{children}</>;

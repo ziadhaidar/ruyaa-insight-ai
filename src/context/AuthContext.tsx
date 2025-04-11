@@ -59,11 +59,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshProfileStatus = async () => {
     if (user) {
-      const isComplete = await checkProfileCompletion(user.id);
-      console.log("Profile refreshed, completion status:", isComplete);
-      return isComplete;
+      await checkProfileCompletion(user.id);
     }
-    return false;
   };
 
   useEffect(() => {

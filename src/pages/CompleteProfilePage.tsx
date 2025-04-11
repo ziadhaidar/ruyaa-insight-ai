@@ -1,56 +1,39 @@
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { 
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage
-} from "@/components/ui/form";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import Layout from "@/components/Layout";
 
 const profileFormSchema = z.object({
   age: z.coerce.number().min(13, { message: "You must be at least 13 years old" }),
-  gender: z.enum(["male", "female", "other", "prefer_not_to_say"], { 
-    required_error: "Please select your gender" 
-  }),
-  maritalStatus: z.enum(["single", "married", "divorced", "widowed", "other"], { 
-    required_error: "Please select your marital status" 
-  }),
-  hasKids: z.enum(["yes", "no"], { 
-    required_error: "Please indicate if you have children" 
-  }),
-  hasPets: z.enum(["yes", "no"], { 
-    required_error: "Please indicate if you have pets" 
-  }),
-  workStatus: z.enum(["employed", "unemployed", "student", "retired", "other"], { 
-    required_error: "Please select your employment status" 
-  }),
+  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
+  maritalStatus: z.enum(["single", "married", "divorced", "widowed", "other"]),
+  hasKids: z.enum(["yes", "no"]),
+  hasPets: z.enum(["yes", "no"]),
+  workStatus: z.enum(["employed", "unemployed", "student", "retired", "other"]),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 const CompleteProfilePage: React.FC = () => {
-  const { user, refreshProfileStatus, hasCompleteProfile } = useAuth();
+  const { user, hasCompleteProfile, refreshProfileStatus } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingProfile, setIsCheckingProfile] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
+  // Form initialization
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
@@ -62,361 +45,272 @@ const CompleteProfilePage: React.FC = () => {
     },
   });
 
-  // Check if the user already has a complete profile and redirect if needed
+  // Check if profile is already complete and redirect if it is
   useEffect(() => {
-    const checkProfileStatus = async () => {
-      if (!user) return;
-
-      console.log("Checking profile status on component mount");
+    if (!user) {
+      navigate("/login", { replace: true });
+      return;
+    }
+    
+    console.log("CompleteProfilePage - checking profile completion");
+    const checkAndRedirect = async () => {
       try {
-        // Check if the user has a complete profile
+        console.log("Checking if profile is already complete for user:", user.id);
         const { data, error } = await supabase
           .from('profiles')
           .select('age, gender, marital_status, has_kids, has_pets, work_status')
           .eq('id', user.id)
           .single();
-
+          
         if (error) {
           console.error("Error checking profile:", error);
-          setIsCheckingProfile(false);
+          setIsChecking(false);
           return;
         }
-
-        // Check if all required fields are present
-        const isProfileComplete = data && 
+        
+        const isComplete = data && 
           data.age !== null && 
           data.gender !== null && 
           data.marital_status !== null && 
           data.has_kids !== null && 
           data.has_pets !== null && 
           data.work_status !== null;
-
-        console.log("Profile complete status:", isProfileComplete, data);
+          
+        console.log("Profile data from check:", data, "Complete:", isComplete);
         
-        if (isProfileComplete) {
-          // If profile is complete, redirect to dreams page
-          toast({
-            title: "Profile already complete",
-            description: "You have already completed your profile",
-          });
-          
-          // Force refresh profile status in auth context before navigating
+        if (isComplete) {
+          console.log("Profile is already complete, redirecting to dreams page");
           await refreshProfileStatus();
-          
-          // Give time for the status to update before navigation
-          setTimeout(() => {
-            navigate("/dreams", { replace: true });
-          }, 100);
-          return;
-        }
-
-        setIsCheckingProfile(false);
-      } catch (error) {
-        console.error("Error checking profile status:", error);
-        setIsCheckingProfile(false);
-      }
-    };
-
-    checkProfileStatus();
-  }, [user, navigate, toast, refreshProfileStatus]);
-
-  // Fetch existing profile data if available
-  useEffect(() => {
-    const getProfileData = async () => {
-      if (!user || isCheckingProfile) return;
-
-      try {
-        console.log("Fetching existing profile data");
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          console.error("Error fetching profile:", error);
-          return;
-        }
-
-        if (data) {
-          console.log("Existing profile data:", data);
-          // Set default values from existing profile
-          form.setValue('age', data.age || undefined);
-          form.setValue('gender', data.gender || undefined);
-          form.setValue('maritalStatus', data.marital_status || undefined);
-          form.setValue('hasKids', data.has_kids ? 'yes' : 'no');
-          form.setValue('hasPets', data.has_pets ? 'yes' : 'no');
-          form.setValue('workStatus', data.work_status || undefined);
+          navigate("/dreams", { replace: true });
+        } else {
+          setIsChecking(false);
         }
       } catch (error) {
-        console.error("Error loading profile data:", error);
+        console.error("Error in profile check:", error);
+        setIsChecking(false);
       }
     };
-
-    getProfileData();
-  }, [user, form, isCheckingProfile]);
+    
+    checkAndRedirect();
+  }, [user, navigate, refreshProfileStatus]);
 
   const onSubmit = async (values: ProfileFormValues) => {
     if (!user) return;
     
-    setIsLoading(true);
-    console.log("Form submitted with values:", values);
+    setIsSubmitting(true);
     
     try {
-      // First get the existing profile to confirm it exists
-      const { data: existingProfile, error: fetchError } = await supabase
+      const { error } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .single();
-        
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error("Error checking if profile exists:", fetchError);
-        throw fetchError;
-      }
-      
-      // If profile doesn't exist, create it; otherwise update it
-      let updateError;
-      if (!existingProfile) {
-        console.log("Creating new profile");
-        const { error } = await supabase.from('profiles').insert({
-          id: user.id,
+        .update({
           age: values.age,
           gender: values.gender,
           marital_status: values.maritalStatus,
           has_kids: values.hasKids === "yes",
           has_pets: values.hasPets === "yes",
           work_status: values.workStatus
-        });
-        updateError = error;
-      } else {
-        console.log("Updating existing profile");
-        const { error } = await supabase.from('profiles').update({
-          age: values.age,
-          gender: values.gender,
-          marital_status: values.maritalStatus,
-          has_kids: values.hasKids === "yes",
-          has_pets: values.hasPets === "yes",
-          work_status: values.workStatus
-        }).eq('id', user.id);
-        updateError = error;
-      }
+        })
+        .eq('id', user.id);
       
-      if (updateError) {
-        throw updateError;
-      }
-      
-      // Force refresh profile status in auth context
-      const isComplete = await refreshProfileStatus();
-      console.log("Profile refreshed after save, completion status:", isComplete);
+      if (error) throw error;
       
       toast({
-        title: "Profile updated",
-        description: "Your profile has been successfully completed",
+        title: "Profile completed",
+        description: "Your profile has been successfully saved",
       });
       
-      // Use replace: true to prevent going back to the form
-      // Add a slight delay to ensure refreshProfileStatus has completed
-      setTimeout(() => {
-        console.log("Redirecting to dreams page after successful profile save");
-        navigate("/dreams", { replace: true });
-      }, 100);
+      // Refresh profile status in context
+      await refreshProfileStatus();
+      
+      // After confirming the profile is saved, redirect to dreams page
+      console.log("Profile saved, redirecting to dreams page");
+      navigate("/dreams", { replace: true });
     } catch (error: any) {
-      console.error("Error updating profile:", error);
+      console.error("Error saving profile:", error);
       toast({
-        title: "Error updating profile",
-        description: error.message || "There was a problem updating your profile",
+        title: "Error",
+        description: error.message || "Failed to save profile",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (isCheckingProfile) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <p className="text-lg">Checking profile status...</p>
-          </div>
-        </div>
-      </Layout>
-    );
+  if (isChecking) {
+    return <div className="flex min-h-screen items-center justify-center">Checking profile status...</div>;
   }
 
   return (
-    <Layout>
-      <div className="max-w-lg mx-auto py-8 px-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Complete Your Profile</CardTitle>
-            <CardDescription>
-              Please provide the following information to help us personalize your dream interpretations.
-              This information is required to continue using the app.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="age"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Age</FormLabel>
+    <div className="flex min-h-screen items-center justify-center p-4 bg-gray-50">
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle className="text-2xl">Complete Your Profile</CardTitle>
+          <CardDescription>
+            Please provide some information about yourself to help us personalize your dream interpretations.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="age"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Age</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Your age" 
+                        type="number" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <Input 
-                          {...field} 
-                          type="number" 
-                          placeholder="Your age" 
-                          required
-                        />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="gender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gender</FormLabel>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="maritalStatus"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Marital Status</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} required>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select gender" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                            <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select marital status" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="maritalStatus"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Marital Status</FormLabel>
+                      <SelectContent>
+                        <SelectItem value="single">Single</SelectItem>
+                        <SelectItem value="married">Married</SelectItem>
+                        <SelectItem value="divorced">Divorced</SelectItem>
+                        <SelectItem value="widowed">Widowed</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="hasKids"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Do you have children?</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex flex-row space-x-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="yes" id="hasKids-yes" />
+                          <Label htmlFor="hasKids-yes">Yes</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="no" id="hasKids-no" />
+                          <Label htmlFor="hasKids-no">No</Label>
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="hasPets"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Do you have pets?</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex flex-row space-x-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="yes" id="hasPets-yes" />
+                          <Label htmlFor="hasPets-yes">Yes</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="no" id="hasPets-no" />
+                          <Label htmlFor="hasPets-no">No</Label>
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="workStatus"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Employment Status</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} required>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select marital status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="single">Single</SelectItem>
-                            <SelectItem value="married">Married</SelectItem>
-                            <SelectItem value="divorced">Divorced</SelectItem>
-                            <SelectItem value="widowed">Widowed</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select employment status" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="hasKids"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Do you have children?</FormLabel>
-                      <FormControl>
-                        <RadioGroup 
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-row space-x-4"
-                          required
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="yes" id="hasKids-yes" />
-                            <Label htmlFor="hasKids-yes">Yes</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="no" id="hasKids-no" />
-                            <Label htmlFor="hasKids-no">No</Label>
-                          </div>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="hasPets"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Do you have pets?</FormLabel>
-                      <FormControl>
-                        <RadioGroup 
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-row space-x-4"
-                          required
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="yes" id="hasPets-yes" />
-                            <Label htmlFor="hasPets-yes">Yes</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="no" id="hasPets-no" />
-                            <Label htmlFor="hasPets-no">No</Label>
-                          </div>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="workStatus"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Employment Status</FormLabel>
-                      <FormControl>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} required>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select employment status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="employed">Employed</SelectItem>
-                            <SelectItem value="unemployed">Unemployed</SelectItem>
-                            <SelectItem value="student">Student</SelectItem>
-                            <SelectItem value="retired">Retired</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save Profile"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
-    </Layout>
+                      <SelectContent>
+                        <SelectItem value="employed">Employed</SelectItem>
+                        <SelectItem value="unemployed">Unemployed</SelectItem>
+                        <SelectItem value="student">Student</SelectItem>
+                        <SelectItem value="retired">Retired</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Saving..." : "Save Profile"}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

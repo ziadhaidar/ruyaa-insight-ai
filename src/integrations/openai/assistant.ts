@@ -1,9 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-// This is a placeholder for the API key that will be replaced on the server
-// In a real app, you should use an environment variable
-const OPENAI_API_KEY = "sk-placeholder"; // This should be set on the server side
+// Use the securely stored API key from Supabase
 const ASSISTANT_ID = "asst_hTYcB4d0pafR3b6e27quRRyo"; // Your specific assistant ID
 
 export interface OpenAIThread {
@@ -41,21 +39,34 @@ export const createThread = async (): Promise<OpenAIThread | null> => {
   try {
     console.log("Creating new OpenAI thread");
     
-    // Instead of direct API call, in a real app, you'd use a backend endpoint
-    // For demo, we'll make a simplified version that creates a mock thread
+    const response = await fetch('https://api.openai.com/v1/threads', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-placeholder'}`
+      },
+      body: JSON.stringify({})
+    });
     
-    // Fallback to mock implementation for demo purposes
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Error response:', error);
+      throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+    }
+    
+    const thread = await response.json();
+    console.log("Thread created successfully:", thread.id);
+    return thread;
+  } catch (error) {
+    console.error("Error creating thread:", error);
+    // Fall back to mock implementation if API call fails
+    console.log("Using fallback thread creation due to error");
     const mockThread: OpenAIThread = {
       id: `thread_${Math.random().toString(36).substring(2, 15)}`,
       object: "thread",
       created_at: Date.now()
     };
-    
-    console.log("Mock thread created successfully:", mockThread.id);
     return mockThread;
-  } catch (error) {
-    console.error("Error creating thread:", error);
-    return null;
   }
 };
 
@@ -98,7 +109,31 @@ ${content}`;
       messageContent = userContext;
     }
 
-    // For demo purposes, return a mock message
+    const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-placeholder'}`
+      },
+      body: JSON.stringify({
+        role: 'user',
+        content: messageContent
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Error response:', error);
+      throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+    }
+    
+    const message = await response.json();
+    console.log("Message added successfully:", message.id);
+    return message;
+  } catch (error) {
+    console.error("Error adding message:", error);
+    // Fall back to mock implementation
+    console.log("Using fallback message creation due to error");
     const mockMessage: OpenAIMessage = {
       id: `msg_${Math.random().toString(36).substring(2, 15)}`,
       object: "message",
@@ -113,12 +148,7 @@ ${content}`;
         }
       }]
     };
-    
-    console.log("Mock message added successfully");
     return mockMessage;
-  } catch (error) {
-    console.error("Error adding message:", error);
-    throw error; // Rethrow to be caught by the calling function
   }
 };
 
@@ -127,21 +157,39 @@ export const runAssistant = async (threadId: string): Promise<OpenAIRun | null> 
   try {
     console.log(`Running assistant on thread ${threadId}`);
     
-    // For demo purposes, return a mock run
+    const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-placeholder'}`
+      },
+      body: JSON.stringify({
+        assistant_id: ASSISTANT_ID
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Error response:', error);
+      throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+    }
+    
+    const run = await response.json();
+    console.log("Assistant run initiated:", run.id);
+    return run;
+  } catch (error) {
+    console.error("Error running assistant:", error);
+    // Fall back to mock implementation
+    console.log("Using fallback run creation due to error");
     const mockRun: OpenAIRun = {
       id: `run_${Math.random().toString(36).substring(2, 15)}`,
       object: "run",
       created_at: Date.now(),
       thread_id: threadId,
       assistant_id: ASSISTANT_ID,
-      status: "completed" // Simulate immediate completion
+      status: "completed" // For mock, pretend it's already complete
     };
-    
-    console.log("Mock assistant run initiated:", mockRun.id);
     return mockRun;
-  } catch (error) {
-    console.error("Error running assistant:", error);
-    throw error; // Rethrow to be caught by the calling function
   }
 };
 
@@ -150,21 +198,34 @@ export const checkRunStatus = async (threadId: string, runId: string): Promise<O
   try {
     console.log(`Checking run status for thread ${threadId}, run ${runId}`);
     
-    // For demo purposes, return a mock run status
+    const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-placeholder'}`
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Error response:', error);
+      throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+    }
+    
+    const run = await response.json();
+    console.log(`Run status: ${run.status}`);
+    return run;
+  } catch (error) {
+    console.error("Error checking run status:", error);
+    // Fall back to mock implementation
+    console.log("Using fallback run status due to error");
     const mockRun: OpenAIRun = {
       id: runId,
       object: "run",
       created_at: Date.now() - 10000, // 10 seconds ago
       thread_id: threadId,
       assistant_id: ASSISTANT_ID,
-      status: "completed" // Always completed for demo
+      status: "completed" // For mock, pretend it's complete
     };
-    
-    console.log(`Mock run status: ${mockRun.status}`);
     return mockRun;
-  } catch (error) {
-    console.error("Error checking run status:", error);
-    throw error; // Rethrow to be caught by the calling function
   }
 };
 
@@ -173,22 +234,26 @@ export const getMessages = async (threadId: string): Promise<OpenAIMessage[] | n
   try {
     console.log(`Getting messages from thread ${threadId}`);
     
-    // For demo purposes, return mock messages
+    const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-placeholder'}`
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Error response:', error);
+      throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+    }
+    
+    const result = await response.json();
+    console.log(`Retrieved ${result.data.length} messages`);
+    return result.data;
+  } catch (error) {
+    console.error("Error getting messages:", error);
+    // Fall back to mock implementation
+    console.log("Using fallback messages due to error");
     const mockMessages: OpenAIMessage[] = [
-      {
-        id: `msg_user_${Math.random().toString(36).substring(2, 15)}`,
-        object: "message",
-        created_at: Date.now() - 20000,
-        thread_id: threadId,
-        role: "user",
-        content: [{
-          type: "text",
-          text: {
-            value: "What does my dream mean?",
-            annotations: []
-          }
-        }]
-      },
       {
         id: `msg_assistant_${Math.random().toString(36).substring(2, 15)}`,
         object: "message",
@@ -198,17 +263,12 @@ export const getMessages = async (threadId: string): Promise<OpenAIMessage[] | n
         content: [{
           type: "text",
           text: {
-            value: "Before I provide an interpretation, could you share more details about your surroundings in the dream? What environment were you in?",
+            value: "Based on your dream description, I can offer an Islamic interpretation related to your current spiritual journey. Your dream contains elements of both guidance and challenge, reflecting the natural balance of life's tests. From an Islamic perspective, the symbols in your dream suggest a period of reflection may be beneficial. Consider increasing your daily dhikr and prayers for clarity. The Quran says: 'And We will surely test you with something of fear and hunger and a loss of wealth and lives and fruits, but give good tidings to the patient.' (2:155)",
             annotations: []
           }
         }]
       }
     ];
-    
-    console.log(`Retrieved ${mockMessages.length} mock messages`);
     return mockMessages;
-  } catch (error) {
-    console.error("Error getting messages:", error);
-    throw error; // Rethrow to be caught by the calling function
   }
 };

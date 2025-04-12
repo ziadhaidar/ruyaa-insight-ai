@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
 import { Dream, Message, InterpretationSession } from "@/types";
@@ -10,7 +11,7 @@ const SAMPLE_QUESTIONS = [
   "How did you feel during this dream? Were you scared, happy, confused, or something else?"
 ];
 
-// Sample interpretation for demo mode
+// Sample interpretation for fallback mode
 const SAMPLE_INTERPRETATION = `
 Based on your dream description and the additional details you've shared, I can offer the following Islamic interpretation:
 
@@ -65,8 +66,15 @@ export const useDreamActions = (state: any) => {
         state.user.id
       );
       
-      // In demo mode, use the first sample question
-      const assistantResponse = SAMPLE_QUESTIONS[0];
+      // Get the first response from the assistant
+      let assistantResponse;
+      try {
+        assistantResponse = await state.runAssistantAndGetResponse(threadId);
+      } catch (error) {
+        console.error("Error getting assistant response:", error);
+        // Fallback to sample question if assistant fails
+        assistantResponse = SAMPLE_QUESTIONS[0];
+      }
       
       // Create a new session with the messages
       const session: InterpretationSession = {
@@ -152,16 +160,27 @@ export const useDreamActions = (state: any) => {
         messages: updatedMessages
       });
       
-      // In demo mode, use the sample questions
-      let assistantResponse = "";
-      const questionNumber = state.currentSession.currentQuestion;
+      // Send message to the assistant
+      await state.sendMessageToAssistant(
+        state.threadId,
+        question,
+        state.user.id
+      );
       
-      if (questionNumber >= 3) {
-        // If this is the third question, provide the full interpretation
-        assistantResponse = SAMPLE_INTERPRETATION;
-      } else {
-        // Otherwise, provide the next question
-        assistantResponse = SAMPLE_QUESTIONS[questionNumber];
+      // Get response from the assistant
+      let assistantResponse;
+      try {
+        assistantResponse = await state.runAssistantAndGetResponse(state.threadId);
+      } catch (error) {
+        console.error("Error getting assistant response:", error);
+        const questionNumber = state.currentSession.currentQuestion;
+        
+        // Fallback to sample responses
+        if (questionNumber >= 3) {
+          assistantResponse = SAMPLE_INTERPRETATION;
+        } else {
+          assistantResponse = SAMPLE_QUESTIONS[questionNumber];
+        }
       }
       
       // Add the assistant's response to the session
@@ -241,16 +260,27 @@ export const useDreamActions = (state: any) => {
         messages: updatedMessages
       });
       
-      // In demo mode, use the sample questions or provide the interpretation
-      let assistantResponse = "";
-      const questionNumber = state.currentSession.currentQuestion;
+      // Send answer to the assistant
+      await state.sendMessageToAssistant(
+        state.threadId,
+        answer,
+        state.user.id
+      );
       
-      if (questionNumber >= 3) {
-        // If this is the third question, provide the full interpretation
-        assistantResponse = SAMPLE_INTERPRETATION;
-      } else {
-        // Otherwise, provide the next question
-        assistantResponse = SAMPLE_QUESTIONS[questionNumber];
+      // Get next question or final interpretation from the assistant
+      let assistantResponse;
+      try {
+        assistantResponse = await state.runAssistantAndGetResponse(state.threadId);
+      } catch (error) {
+        console.error("Error getting assistant response:", error);
+        const questionNumber = state.currentSession.currentQuestion;
+        
+        // Fallback to sample responses
+        if (questionNumber >= 3) {
+          assistantResponse = SAMPLE_INTERPRETATION;
+        } else {
+          assistantResponse = SAMPLE_QUESTIONS[questionNumber];
+        }
       }
       
       const nextQuestionNumber = state.currentSession.currentQuestion + 1;

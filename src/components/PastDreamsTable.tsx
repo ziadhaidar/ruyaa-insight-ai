@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Dream } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 const PastDreamsTable: React.FC = () => {
   const { t } = useLanguage();
@@ -93,13 +94,15 @@ const PastDreamsTable: React.FC = () => {
               <TableHead>Date</TableHead>
               <TableHead>Dream</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-right">Plan</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {dreams.map((dream) => {
               // Determine status based on interpretation field
-              const status = dream.interpretation ? "completed" : "pending";
+              const status = dream.interpretation ? "submitted" : "draft";
+              // Determine plan based on the status field or other logic
+              const plan = dream.status === "paid" ? "Paid" : "Free";
               
               return (
                 <TableRow key={dream.id}>
@@ -110,29 +113,18 @@ const PastDreamsTable: React.FC = () => {
                     {dream.dream_text}
                   </TableCell>
                   <TableCell>
-                    <span className={`capitalize ${status === "completed" ? "text-green-600" : "text-amber-600"}`}>
+                    <Badge variant={status === "submitted" ? "success" : "outline"} className={status === "submitted" ? "bg-green-600" : "bg-amber-500 text-white"}>
                       {status}
-                    </span>
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {status === "completed" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/dreams/${dream.id}`)}
-                      >
-                        View
-                      </Button>
-                    )}
-                    {status === "pending" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate("/payment")}
-                      >
-                        Pay
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/dreams/${dream.id}`)}
+                    >
+                      {plan}
+                    </Button>
                   </TableCell>
                 </TableRow>
               );

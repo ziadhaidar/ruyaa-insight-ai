@@ -143,7 +143,7 @@ ${content}`;
       content: [{
         type: "text",
         text: {
-          value: messageContent,
+          value: content, // Use the original content variable here, not messageContent
           annotations: []
         }
       }]

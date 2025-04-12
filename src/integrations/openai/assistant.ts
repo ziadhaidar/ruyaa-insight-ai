@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Use the securely stored API key from Supabase
@@ -143,7 +142,7 @@ ${content}`;
       content: [{
         type: "text",
         text: {
-          value: content, // Use the original content variable here, not messageContent
+          value: content,
           annotations: []
         }
       }]
@@ -152,10 +151,22 @@ ${content}`;
   }
 };
 
-// Run the assistant on a thread
-export const runAssistant = async (threadId: string): Promise<OpenAIRun | null> => {
+// Run the assistant on a thread with optional instructions
+export const runAssistant = async (
+  threadId: string,
+  instructions?: string
+): Promise<OpenAIRun | null> => {
   try {
     console.log(`Running assistant on thread ${threadId}`);
+    
+    const body: Record<string, any> = {
+      assistant_id: ASSISTANT_ID
+    };
+    
+    // Add instructions if provided
+    if (instructions) {
+      body.instructions = instructions;
+    }
     
     const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
       method: 'POST',
@@ -163,9 +174,7 @@ export const runAssistant = async (threadId: string): Promise<OpenAIRun | null> 
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-placeholder'}`
       },
-      body: JSON.stringify({
-        assistant_id: ASSISTANT_ID
-      })
+      body: JSON.stringify(body)
     });
     
     if (!response.ok) {
@@ -263,12 +272,41 @@ export const getMessages = async (threadId: string): Promise<OpenAIMessage[] | n
         content: [{
           type: "text",
           text: {
-            value: "Based on your dream description, I can offer an Islamic interpretation related to your current spiritual journey. Your dream contains elements of both guidance and challenge, reflecting the natural balance of life's tests. From an Islamic perspective, the symbols in your dream suggest a period of reflection may be beneficial. Consider increasing your daily dhikr and prayers for clarity. The Quran says: 'And We will surely test you with something of fear and hunger and a loss of wealth and lives and fruits, but give good tidings to the patient.' (2:155)",
+            value: "Could you share more details about the colors you saw in your dream?",
             annotations: []
           }
         }]
       }
     ];
     return mockMessages;
+  }
+};
+
+// Count user messages in a thread
+export const countUserMessages = async (threadId: string): Promise<number> => {
+  try {
+    const messages = await getMessages(threadId);
+    if (!messages) return 0;
+    
+    return messages.filter(msg => msg.role === "user").length;
+  } catch (error) {
+    console.error("Error counting user messages:", error);
+    return 0;
+  }
+};
+
+// Get the latest assistant message
+export const getLatestAssistantMessage = async (threadId: string): Promise<string | null> => {
+  try {
+    const messages = await getMessages(threadId);
+    if (!messages) return null;
+    
+    const assistantMessages = messages.filter(msg => msg.role === "assistant");
+    if (assistantMessages.length === 0) return null;
+    
+    return assistantMessages[0].content[0]?.text?.value || null;
+  } catch (error) {
+    console.error("Error getting latest assistant message:", error);
+    return null;
   }
 };

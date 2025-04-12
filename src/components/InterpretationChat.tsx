@@ -31,14 +31,9 @@ const InterpretationChat = () => {
     setError(null);
     
     try {
-      if (currentSession && currentSession.messages.length % 2 === 0) {
-        // It's the user's turn to ask a question
-        await askQuestion(messageContent);
-      } else {
-        // It's the user's turn to submit an answer
-        await submitAnswer(messageContent);
-      }
-      
+      // Since we're following a strict question-answer protocol,
+      // we'll always use submitAnswer
+      await submitAnswer(messageContent);
       setMessageContent("");
     } catch (err) {
       console.error("Error in chat:", err);
@@ -50,9 +45,8 @@ const InterpretationChat = () => {
   const isFinalInterpretation = () => {
     if (!currentSession) return false;
     
-    // The final interpretation is when we have at least 8 messages and completed all 3 questions
-    return currentSession.messages.length >= 8 && 
-           currentSession.currentQuestion > 3 &&
+    // The final interpretation is when we have completed all 3 questions
+    return currentSession.currentQuestion > 3 &&
            currentSession.messages[currentSession.messages.length - 1].sender === 'ai';
   };
 
@@ -60,7 +54,9 @@ const InterpretationChat = () => {
   const containsQuranVerse = (content: string) => {
     // This is a simple check - you might want to implement a more sophisticated detection
     return content.includes('Quran') || content.includes('Qur\'an') || content.includes('verse') || 
-           content.includes('surah') || content.includes('ayah');
+           content.includes('surah') || content.includes('ayah') || 
+           // Add Arabic text detection
+           /[\u0600-\u06FF]/.test(content);
   };
 
   // Function to enhance message display
@@ -74,18 +70,22 @@ const InterpretationChat = () => {
                    currentSession?.messages[currentSession.messages.length - 1].id === message.id;
     
     if (isFinal) {
-      // Split the content to find Quranic verses
-      const parts = message.content.split(/(\bQuran\b|\bQur'an\b|\bverse\b|\bSurah\b|\bAyah\b)/i);
+      // Split the content to find Quranic verses (both Arabic and English translations)
+      const parts = message.content.split(/(\bQuran\b|\bQur'an\b|\bverse\b|\bSurah\b|\bAyah\b|[\u0600-\u06FF]{10,})/i);
       
       return (
         <div className="space-y-4">
           {isFinal && <Badge className="mb-2">Final Interpretation</Badge>}
           {parts.map((part, index) => {
-            if (index > 0 && /(\bQuran\b|\bQur'an\b|\bverse\b|\bSurah\b|\bAyah\b)/i.test(parts[index-1])) {
-              // This part likely contains a Quranic verse
+            // Check if this part likely contains Arabic text (Quranic verse)
+            const containsArabic = /[\u0600-\u06FF]{4,}/.test(part);
+            
+            if (containsArabic || (index > 0 && /(\bQuran\b|\bQur'an\b|\bverse\b|\bSurah\b|\bAyah\b)/i.test(parts[index-1]))) {
+              // This part likely contains a Quranic verse or Arabic text
               return (
                 <blockquote key={index} className="pl-4 border-l-4 border-primary italic">
-                  {part}
+                  {containsArabic && <p className="font-bold text-right my-2 text-lg">{part}</p>}
+                  {!containsArabic && <p>{part}</p>}
                 </blockquote>
               );
             }
@@ -95,7 +95,7 @@ const InterpretationChat = () => {
       );
     }
     
-    // For regular AI messages
+    // For regular AI messages (questions)
     return <p>{message.content}</p>;
   };
 
@@ -103,14 +103,10 @@ const InterpretationChat = () => {
   const getButtonText = () => {
     if (!currentSession) return "Send";
     
-    if (currentSession.messages.length % 2 === 0) {
-      return `Answer Question ${Math.ceil(currentSession.messages.length / 2)}`;
+    if (currentSession.currentQuestion <= 3) {
+      return `Answer Question ${currentSession.currentQuestion}`;
     } else {
-      if (currentSession.currentQuestion <= 3) {
-        return `Submit Answer ${currentSession.currentQuestion}`;
-      } else {
-        return "Send";
-      }
+      return "Send";
     }
   };
 

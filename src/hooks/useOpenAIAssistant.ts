@@ -6,7 +6,9 @@ import {
   addMessageToThread, 
   runAssistant, 
   checkRunStatus, 
-  getMessages 
+  getMessages,
+  countUserMessages,
+  getLatestAssistantMessage
 } from "@/integrations/openai/assistant";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -78,11 +80,28 @@ export const useOpenAIAssistant = () => {
     throw new Error("Maximum polling attempts reached");
   };
 
+  // Run the assistant with specific instructions based on question number
+  const runAssistantWithInstructions = async (threadId: string, questionNumber: number) => {
+    let instructions = "";
+    
+    if (questionNumber === 1) {
+      instructions = "Ask the first follow-up question about the user's dream. Be concise.";
+    } else if (questionNumber === 2) {
+      instructions = "Ask the second follow-up question about the user's dream. Be concise.";
+    } else if (questionNumber === 3) {
+      instructions = "Ask the third and final follow-up question about the user's dream. Be concise.";
+    } else if (questionNumber > 3) {
+      instructions = "Generate a final interpretation with: (1) A detailed explanation, (2) A relevant Quranic verse in Arabic with translation, and (3) A spiritual conclusion.";
+    }
+    
+    return await runAssistant(threadId, instructions);
+  };
+
   // Run the assistant and wait for a response
-  const runAssistantAndGetResponse = async (threadId: string) => {
+  const runAssistantAndGetResponse = async (threadId: string, questionNumber: number = 1) => {
     try {
-      // Run the assistant on the thread
-      const run = await runAssistant(threadId);
+      // Run the assistant on the thread with appropriate instructions
+      const run = await runAssistantWithInstructions(threadId, questionNumber);
       
       if (!run) {
         throw new Error("Failed to run OpenAI assistant");
@@ -114,8 +133,28 @@ export const useOpenAIAssistant = () => {
       return latestAssistantMessage.content[0]?.text?.value || "No response available";
     } catch (error) {
       console.error("Error running assistant:", error);
-      // Provide a fallback response to ensure the user experience continues
-      return "Based on your dream description, I can provide an Islamic interpretation. Your dream appears to contain elements that suggest a period of spiritual growth. In Islamic tradition, dreams are considered one of the forty-six parts of prophethood. The elements you described may symbolize upcoming changes or challenges that require patience and faith. Consider increasing your prayers and remembrance of Allah during this time. The Quran says: 'Indeed, with hardship comes ease' (94:5).";
+      
+      // Provide fallback responses based on question number
+      if (questionNumber === 1) {
+        return "Could you share more details about the colors you saw in your dream?";
+      } else if (questionNumber === 2) {
+        return "Were there any specific people or characters in your dream that stood out to you?";
+      } else if (questionNumber === 3) {
+        return "How did you feel during this dream? Were you scared, happy, confused, or something else?";
+      } else {
+        // Final interpretation fallback
+        return "Based on your dream description, I can provide an Islamic interpretation. Your dream appears to contain elements that suggest a period of spiritual growth. In Islamic tradition, dreams are considered one of the forty-six parts of prophethood.\n\nThe Quran states: \"وَلَقَدْ خَلَقْنَا الْإِنسَانَ وَنَعْلَمُ مَا تُوَسْوِسُ بِهِ نَفْسُهُ وَنَحْنُ أَقْرَبُ إِلَيْهِ مِنْ حَبْلِ الْوَرِيدِ\" - \"And We have already created man and know what his soul whispers to him, and We are closer to him than his jugular vein.\" (Quran 50:16)\n\nThis verse reminds us that Allah is aware of our innermost thoughts and feelings, including those that manifest in our dreams. The elements you described may symbolize upcoming changes or challenges that require patience and faith. Consider increasing your prayers and remembrance of Allah during this time.";
+      }
+    }
+  };
+
+  // Get the number of questions answered so far
+  const getAnsweredQuestionsCount = async (threadId: string) => {
+    try {
+      return await countUserMessages(threadId) - 1; // Subtract 1 for the initial dream submission
+    } catch (error) {
+      console.error("Error counting answered questions:", error);
+      return 0;
     }
   };
 
@@ -126,6 +165,8 @@ export const useOpenAIAssistant = () => {
     setIsLoading,
     createAssistantThread,
     sendMessageToAssistant,
-    runAssistantAndGetResponse
+    runAssistantAndGetResponse,
+    getAnsweredQuestionsCount,
+    getLatestAssistantMessage
   };
 };

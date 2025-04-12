@@ -4,31 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dream, Message, InterpretationSession } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
 
-// Sample follow-up questions for demo mode
-const SAMPLE_QUESTIONS = [
-  "Could you share more details about the colors you saw in your dream?",
-  "Were there any specific people or characters in your dream that stood out to you?",
-  "How did you feel during this dream? Were you scared, happy, confused, or something else?"
-];
-
-// Sample interpretation for fallback mode
-const SAMPLE_INTERPRETATION = `
-Based on your dream description and the additional details you've shared, I can offer the following Islamic interpretation:
-
-**Quranic Verse Reference:**
-"We have certainly created man in the best of stature" (Quran 95:4)
-
-**Interpretation:**
-Your dream appears to represent a journey of self-discovery and spiritual growth. The symbols you described - particularly the water and light - are often associated with purity and divine guidance in Islamic dream interpretation traditions.
-
-**Spiritual Reflection:**
-This dream may be encouraging you to reflect on your current spiritual path. The challenges you faced in the dream could represent obstacles you're currently navigating in your waking life, while the resolution suggests Allah's guidance is present even in difficult times.
-
-Consider spending more time in prayer and reflection, particularly focusing on the areas of your life where you feel uncertain. The dream suggests a positive outcome awaits if you maintain faith and patience.
-
-May Allah guide you and grant you clarity on your path forward.
-`;
-
+// Process dream interpretation with the 3-question protocol
 export const useDreamActions = (state: any) => {
   const { toast } = useToast();
 
@@ -60,23 +36,24 @@ export const useDreamActions = (state: any) => {
       }
       
       // Send the dream to the assistant
-      const message = await state.sendMessageToAssistant(
+      await state.sendMessageToAssistant(
         threadId, 
         state.currentDream.dream_text, 
         state.user.id
       );
       
-      // Get the first response from the assistant
-      let assistantResponse;
+      // Get the first question from the assistant
+      let firstQuestion;
       try {
-        assistantResponse = await state.runAssistantAndGetResponse(threadId);
+        // Run the assistant with instructions to ask the first question
+        firstQuestion = await state.runAssistantAndGetResponse(threadId, 1);
       } catch (error) {
-        console.error("Error getting assistant response:", error);
-        // Fallback to sample question if assistant fails
-        assistantResponse = SAMPLE_QUESTIONS[0];
+        console.error("Error getting first question:", error);
+        // Fallback question
+        firstQuestion = "Could you share more details about the colors you saw in your dream?";
       }
       
-      // Create a new session with the messages
+      // Create a new session with the initial message exchange
       const session: InterpretationSession = {
         dream: state.currentDream,
         messages: [
@@ -90,7 +67,7 @@ export const useDreamActions = (state: any) => {
           {
             id: uuidv4(),
             dreamId: state.currentDream.id,
-            content: assistantResponse,
+            content: firstQuestion,
             sender: "ai",
             timestamp: new Date().toISOString()
           }
@@ -126,106 +103,6 @@ export const useDreamActions = (state: any) => {
         variant: "destructive"
       });
       throw error; // Re-throw to handle in the component
-    } finally {
-      state.setIsLoading(false);
-    }
-  };
-  
-  // Ask a follow-up question
-  const askQuestion = async (question: string) => {
-    if (!state.currentSession || !state.threadId || !state.user) {
-      toast({
-        title: "Error",
-        description: "No active session. Please start a new dream interpretation.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    state.setIsLoading(true);
-    
-    try {
-      // Add the user's question to the session
-      const newUserMessage: Message = {
-        id: uuidv4(),
-        dreamId: state.currentSession.dream.id,
-        content: question,
-        sender: "user",
-        timestamp: new Date().toISOString()
-      };
-      
-      const updatedMessages = [...state.currentSession.messages, newUserMessage];
-      state.setCurrentSession({
-        ...state.currentSession,
-        messages: updatedMessages
-      });
-      
-      // Send message to the assistant
-      await state.sendMessageToAssistant(
-        state.threadId,
-        question,
-        state.user.id
-      );
-      
-      // Get response from the assistant
-      let assistantResponse;
-      try {
-        assistantResponse = await state.runAssistantAndGetResponse(state.threadId);
-      } catch (error) {
-        console.error("Error getting assistant response:", error);
-        const questionNumber = state.currentSession.currentQuestion;
-        
-        // Fallback to sample responses
-        if (questionNumber >= 3) {
-          assistantResponse = SAMPLE_INTERPRETATION;
-        } else {
-          assistantResponse = SAMPLE_QUESTIONS[questionNumber];
-        }
-      }
-      
-      // Add the assistant's response to the session
-      const newAIMessage: Message = {
-        id: uuidv4(),
-        dreamId: state.currentSession.dream.id,
-        content: assistantResponse,
-        sender: "ai",
-        timestamp: new Date().toISOString()
-      };
-      
-      const finalMessages = [...updatedMessages, newAIMessage];
-      
-      // Update the current session
-      state.setCurrentSession({
-        ...state.currentSession,
-        messages: finalMessages,
-        currentQuestion: state.currentSession.currentQuestion + 1,
-        isComplete: state.currentSession.currentQuestion >= 3
-      });
-      
-      // Update dream in database with questions and answers
-      const updatedQuestions = state.currentSession.dream.questions || [];
-      updatedQuestions.push(question);
-      
-      const updatedAnswers = state.currentSession.dream.answers || [];
-      updatedAnswers.push(assistantResponse);
-      
-      const { error } = await supabase.from('dreams').update({
-        questions: updatedQuestions,
-        answers: updatedAnswers
-      }).eq('id', state.currentSession.dream.id);
-      
-      if (error) {
-        console.error("Error updating dream:", error);
-      }
-      
-    } catch (error: any) {
-      console.error("Error asking question:", error);
-      toast({
-        title: "Error",
-        description: "Couldn't process your question, please try again later.",
-        variant: "destructive"
-      });
-      throw error; // Re-throw to handle in component
     } finally {
       state.setIsLoading(false);
     }
@@ -267,23 +144,28 @@ export const useDreamActions = (state: any) => {
         state.user.id
       );
       
+      // Determine the next question number
+      const nextQuestionNumber = state.currentSession.currentQuestion + 1;
+      
       // Get next question or final interpretation from the assistant
       let assistantResponse;
       try {
-        assistantResponse = await state.runAssistantAndGetResponse(state.threadId);
+        // Pass the question number to get appropriate instructions
+        assistantResponse = await state.runAssistantAndGetResponse(state.threadId, nextQuestionNumber);
       } catch (error) {
         console.error("Error getting assistant response:", error);
-        const questionNumber = state.currentSession.currentQuestion;
         
-        // Fallback to sample responses
-        if (questionNumber >= 3) {
-          assistantResponse = SAMPLE_INTERPRETATION;
+        // Fallback responses based on question number
+        if (nextQuestionNumber === 2) {
+          assistantResponse = "Were there any specific people or characters in your dream that stood out to you?";
+        } else if (nextQuestionNumber === 3) {
+          assistantResponse = "How did you feel during this dream? Were you scared, happy, confused, or something else?";
         } else {
-          assistantResponse = SAMPLE_QUESTIONS[questionNumber];
+          // Final interpretation fallback (after all 3 questions)
+          assistantResponse = "Based on your dream description and your responses, I can provide this Islamic interpretation:\n\nالرُّؤْيَا الصَّالِحَةُ مِنَ اللهِ\n\"A good dream is from Allah.\"\n\nYour dream suggests a journey of spiritual growth. The elements you've described align with themes of self-discovery and divine guidance. The Prophet Muhammad (peace be upon him) taught us that dreams are one of the forty-six parts of prophethood.\n\nThe Quran says: \"اللَّهُ نُورُ السَّمَاوَاتِ وَالْأَرْضِ\" - \"Allah is the Light of the heavens and the earth.\" (Quran 24:35)\n\nThis verse reminds us that Allah's guidance illuminates our path, even in times of uncertainty. Consider increasing your prayers and reflection during this period. Pay attention to the signs around you, as they may contain guidance specifically meant for you.";
         }
       }
       
-      const nextQuestionNumber = state.currentSession.currentQuestion + 1;
       const isInterpretationComplete = nextQuestionNumber > 3;
       
       // Add the assistant's response to the session
@@ -304,13 +186,24 @@ export const useDreamActions = (state: any) => {
       });
       
       // Update dream in database
-      const { error } = await supabase.from('dreams').update({
-        status: isInterpretationComplete ? "completed" : "interpreting",
-        interpretation: isInterpretationComplete ? assistantResponse : null
-      }).eq('id', state.currentSession.dream.id);
-      
-      if (error) {
-        console.error("Error updating dream:", error);
+      if (isInterpretationComplete) {
+        const { error } = await supabase.from('dreams').update({
+          status: "completed",
+          interpretation: assistantResponse
+        }).eq('id', state.currentSession.dream.id);
+        
+        if (error) {
+          console.error("Error updating dream:", error);
+        }
+      } else {
+        // Just update the status if we're still in the questioning phase
+        const { error } = await supabase.from('dreams').update({
+          status: "interpreting"
+        }).eq('id', state.currentSession.dream.id);
+        
+        if (error) {
+          console.error("Error updating dream status:", error);
+        }
       }
       
     } catch (error: any) {
@@ -326,7 +219,12 @@ export const useDreamActions = (state: any) => {
     }
   };
   
-  // Complete dream interpretation
+  // Ask a question (this is now just an alias for submitAnswer to maintain API compatibility)
+  const askQuestion = async (question: string) => {
+    return await submitAnswer(question);
+  };
+  
+  // Complete dream interpretation and save to database
   const completeDreamInterpretation = async () => {
     if (!state.currentSession) return;
     

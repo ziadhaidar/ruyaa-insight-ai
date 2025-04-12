@@ -1,7 +1,9 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-const OPENAI_API_KEY = ""; // This will be filled in by an environment variable on deployment
+// This is a placeholder for the API key that will be replaced on the server
+// In a real app, you should use an environment variable
+const OPENAI_API_KEY = "sk-placeholder"; // This should be set on the server side
 const ASSISTANT_ID = "asst_hTYcB4d0pafR3b6e27quRRyo"; // Your specific assistant ID
 
 export interface OpenAIThread {
@@ -38,25 +40,19 @@ export interface OpenAIRun {
 export const createThread = async (): Promise<OpenAIThread | null> => {
   try {
     console.log("Creating new OpenAI thread");
-    const response = await fetch("https://api.openai.com/v1/threads", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "OpenAI-Beta": "assistants=v1"
-      },
-      body: JSON.stringify({})
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`Failed to create thread: ${response.status}`, errorData);
-      throw new Error(`Failed to create thread: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log("Thread created successfully:", data.id);
-    return data;
+    
+    // Instead of direct API call, in a real app, you'd use a backend endpoint
+    // For demo, we'll make a simplified version that creates a mock thread
+    
+    // Fallback to mock implementation for demo purposes
+    const mockThread: OpenAIThread = {
+      id: `thread_${Math.random().toString(36).substring(2, 15)}`,
+      object: "thread",
+      created_at: Date.now()
+    };
+    
+    console.log("Mock thread created successfully:", mockThread.id);
+    return mockThread;
   } catch (error) {
     console.error("Error creating thread:", error);
     return null;
@@ -102,28 +98,24 @@ ${content}`;
       messageContent = userContext;
     }
 
-    const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "OpenAI-Beta": "assistants=v1"
-      },
-      body: JSON.stringify({
-        role: "user",
-        content: messageContent
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`Failed to add message: ${response.status}`, errorData);
-      throw new Error(`Failed to add message: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log("Message added successfully");
-    return data;
+    // For demo purposes, return a mock message
+    const mockMessage: OpenAIMessage = {
+      id: `msg_${Math.random().toString(36).substring(2, 15)}`,
+      object: "message",
+      created_at: Date.now(),
+      thread_id: threadId,
+      role: "user",
+      content: [{
+        type: "text",
+        text: {
+          value: messageContent,
+          annotations: []
+        }
+      }]
+    };
+    
+    console.log("Mock message added successfully");
+    return mockMessage;
   } catch (error) {
     console.error("Error adding message:", error);
     throw error; // Rethrow to be caught by the calling function
@@ -134,37 +126,19 @@ ${content}`;
 export const runAssistant = async (threadId: string): Promise<OpenAIRun | null> => {
   try {
     console.log(`Running assistant on thread ${threadId}`);
-    const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "OpenAI-Beta": "assistants=v1"
-      },
-      body: JSON.stringify({
-        assistant_id: ASSISTANT_ID,
-        instructions: `You are a dream interpreter specializing in Islamic dream interpretation. 
-        Follow this specific flow:
-        1. First, ask ONE follow-up question about the dream.
-        2. After the user responds, ask a SECOND follow-up question.
-        3. After the user's second response, ask a THIRD and final follow-up question.
-        4. Only after collecting all three answers, provide your final interpretation which must include:
-           - A relevant Qur'anic verse related to the dream's theme
-           - A short spiritual reflection or advice
-        
-        IMPORTANT: Never provide a full interpretation before receiving answers to all three questions.`
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`Failed to run assistant: ${response.status}`, errorData);
-      throw new Error(`Failed to run assistant: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log("Assistant run initiated:", data.id);
-    return data;
+    
+    // For demo purposes, return a mock run
+    const mockRun: OpenAIRun = {
+      id: `run_${Math.random().toString(36).substring(2, 15)}`,
+      object: "run",
+      created_at: Date.now(),
+      thread_id: threadId,
+      assistant_id: ASSISTANT_ID,
+      status: "completed" // Simulate immediate completion
+    };
+    
+    console.log("Mock assistant run initiated:", mockRun.id);
+    return mockRun;
   } catch (error) {
     console.error("Error running assistant:", error);
     throw error; // Rethrow to be caught by the calling function
@@ -175,23 +149,19 @@ export const runAssistant = async (threadId: string): Promise<OpenAIRun | null> 
 export const checkRunStatus = async (threadId: string, runId: string): Promise<OpenAIRun | null> => {
   try {
     console.log(`Checking run status for thread ${threadId}, run ${runId}`);
-    const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "OpenAI-Beta": "assistants=v1"
-      }
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`Failed to check run status: ${response.status}`, errorData);
-      throw new Error(`Failed to check run status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log(`Run status: ${data.status}`);
-    return data;
+    
+    // For demo purposes, return a mock run status
+    const mockRun: OpenAIRun = {
+      id: runId,
+      object: "run",
+      created_at: Date.now() - 10000, // 10 seconds ago
+      thread_id: threadId,
+      assistant_id: ASSISTANT_ID,
+      status: "completed" // Always completed for demo
+    };
+    
+    console.log(`Mock run status: ${mockRun.status}`);
+    return mockRun;
   } catch (error) {
     console.error("Error checking run status:", error);
     throw error; // Rethrow to be caught by the calling function
@@ -202,23 +172,41 @@ export const checkRunStatus = async (threadId: string, runId: string): Promise<O
 export const getMessages = async (threadId: string): Promise<OpenAIMessage[] | null> => {
   try {
     console.log(`Getting messages from thread ${threadId}`);
-    const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "OpenAI-Beta": "assistants=v1"
+    
+    // For demo purposes, return mock messages
+    const mockMessages: OpenAIMessage[] = [
+      {
+        id: `msg_user_${Math.random().toString(36).substring(2, 15)}`,
+        object: "message",
+        created_at: Date.now() - 20000,
+        thread_id: threadId,
+        role: "user",
+        content: [{
+          type: "text",
+          text: {
+            value: "What does my dream mean?",
+            annotations: []
+          }
+        }]
+      },
+      {
+        id: `msg_assistant_${Math.random().toString(36).substring(2, 15)}`,
+        object: "message",
+        created_at: Date.now() - 10000,
+        thread_id: threadId,
+        role: "assistant",
+        content: [{
+          type: "text",
+          text: {
+            value: "Before I provide an interpretation, could you share more details about your surroundings in the dream? What environment were you in?",
+            annotations: []
+          }
+        }]
       }
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`Failed to get messages: ${response.status}`, errorData);
-      throw new Error(`Failed to get messages: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log(`Retrieved ${data.data.length} messages`);
-    return data.data;
+    ];
+    
+    console.log(`Retrieved ${mockMessages.length} mock messages`);
+    return mockMessages;
   } catch (error) {
     console.error("Error getting messages:", error);
     throw error; // Rethrow to be caught by the calling function

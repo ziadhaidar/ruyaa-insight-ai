@@ -9,13 +9,12 @@ import { useDream } from "@/context/DreamContext";
 import { useToast } from "@/components/ui/use-toast";
 
 const PaymentOptions = [
-  { id: "basic", name: "Basic Interpretation", price: 5, currency: "USD" },
-  { id: "standard", name: "Standard Interpretation", price: 10, currency: "USD" },
-  { id: "premium", name: "Premium Interpretation", price: 20, currency: "USD" },
+  { id: "free", name: "Free Interpretation", price: 0, currency: "USD" },
+  { id: "premium", name: "Premium Interpretation", price: 5, currency: "USD" },
 ];
 
 const PaymentForm: React.FC = () => {
-  const [selectedOption, setSelectedOption] = React.useState(PaymentOptions[1].id);
+  const [selectedOption, setSelectedOption] = React.useState(PaymentOptions[0].id);
   const [isProcessing, setIsProcessing] = React.useState(false);
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -35,23 +34,46 @@ const PaymentForm: React.FC = () => {
 
     setIsProcessing(true);
 
-    // In a real app, you'd call your payment processor here
-    // For this demo, we'll simulate a payment
-    setTimeout(() => {
-      // Simulate successful payment
-      toast({
-        title: "Payment successful",
-        description: "Your dream is being processed for interpretation",
-      });
+    try {
+      // If free plan, skip payment processing
+      if (selectedOption === "free") {
+        toast({
+          title: "Processing dream",
+          description: "Your dream is being processed for interpretation",
+        });
+        
+        // Start processing the dream interpretation
+        await processDreamInterpretation();
+        
+        // Navigate to interpretation page
+        navigate("/interpretation");
+      } else {
+        // In a real app, you'd call your payment processor here
+        // For this demo, we'll simulate a payment
+        setTimeout(() => {
+          // Simulate successful payment
+          toast({
+            title: "Payment successful",
+            description: "Your dream is being processed for interpretation",
+          });
 
-      // Start processing the dream interpretation
-      processDreamInterpretation();
-      
-      // Navigate to interpretation page
-      navigate("/interpretation");
-      
+          // Start processing the dream interpretation
+          processDreamInterpretation();
+          
+          // Navigate to interpretation page
+          navigate("/interpretation");
+        }, 2000);
+      }
+    } catch (error) {
+      console.error("Error processing dream:", error);
+      toast({
+        title: "Error",
+        description: "Couldn't process your dream interpretation, please try again later.",
+        variant: "destructive"
+      });
+    } finally {
       setIsProcessing(false);
-    }, 2000);
+    }
   };
   
   // Find the selected payment option
@@ -79,7 +101,7 @@ const PaymentForm: React.FC = () => {
             <SelectContent>
               {PaymentOptions.map((option) => (
                 <SelectItem key={option.id} value={option.id}>
-                  {option.name} - ${option.price}
+                  {option.name} {option.price > 0 ? `- $${option.price}` : '(Free)'}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -90,15 +112,13 @@ const PaymentForm: React.FC = () => {
               <div className="flex justify-between mb-2">
                 <span>{option.name}</span>
                 <span className="font-bold">
-                  ${option.price} {option.currency}
+                  {option.price > 0 ? `$${option.price} ${option.currency}` : 'Free'}
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">
-                {option.id === "basic"
-                  ? t("basicPlanDescription")
-                  : option.id === "standard"
-                  ? t("standardPlanDescription")
-                  : t("premiumPlanDescription")}
+                {option.id === "free"
+                  ? t("freePlanDescription") || "Basic dream interpretation"
+                  : t("premiumPlanDescription") || "Enhanced dream interpretation with more detailed analysis"}
               </p>
             </div>
           )}
@@ -108,7 +128,7 @@ const PaymentForm: React.FC = () => {
             onClick={handlePayment}
             disabled={isProcessing}
           >
-            {isProcessing ? t("processing") : t("payNow")}
+            {isProcessing ? t("processing") : selectedOption === "free" ? t("continueForFree") || "Continue for Free" : t("payNow")}
           </Button>
 
           <p className="text-xs text-center text-muted-foreground">

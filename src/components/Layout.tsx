@@ -37,7 +37,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         variant="ghost" 
         className={language === 'ar' ? 'font-cairo' : 'font-playfair'} 
         onClick={() => {
-          navigate("/home");
+          navigate("/");
           closeSheet();
         }}
       >
@@ -46,6 +46,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       
       {user && (
         <>
+          <Button 
+            variant="ghost" 
+            className={language === 'ar' ? 'font-cairo' : ''} 
+            onClick={() => {
+              navigate("/home");
+              closeSheet();
+            }}
+          >
+            {t("submitDream")}
+          </Button>
           <Button 
             variant="ghost" 
             className={language === 'ar' ? 'font-cairo' : ''} 
@@ -114,7 +124,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex items-center">
             <h1 
               className={`text-2xl font-bold cursor-pointer animate-pulse-subtle ${language === 'ar' ? 'font-cairo' : 'font-playfair'}`}
-              onClick={() => navigate(user ? "/home" : "/")}
+              onClick={() => navigate("/")}
             >
               {t("appName")}
             </h1>

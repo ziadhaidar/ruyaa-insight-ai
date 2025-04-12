@@ -64,10 +64,16 @@ const ProtectedRoute = ({ children, requireProfile = true }: { children: React.R
   return <>{children}</>;
 };
 
+// Landing page redirect component
+const LandingRedirect = () => {
+  const { user } = useAuth();
+  return user ? <Navigate to="/home" replace /> : <LandingPage />;
+};
+
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<LandingRedirect />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/auth" element={<Index />} />

@@ -1,8 +1,32 @@
-
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
 import { Dream, Message, InterpretationSession } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
+
+// Sample follow-up questions for demo mode
+const SAMPLE_QUESTIONS = [
+  "Could you share more details about the colors you saw in your dream?",
+  "Were there any specific people or characters in your dream that stood out to you?",
+  "How did you feel during this dream? Were you scared, happy, confused, or something else?"
+];
+
+// Sample interpretation for demo mode
+const SAMPLE_INTERPRETATION = `
+Based on your dream description and the additional details you've shared, I can offer the following Islamic interpretation:
+
+**Quranic Verse Reference:**
+"We have certainly created man in the best of stature" (Quran 95:4)
+
+**Interpretation:**
+Your dream appears to represent a journey of self-discovery and spiritual growth. The symbols you described - particularly the water and light - are often associated with purity and divine guidance in Islamic dream interpretation traditions.
+
+**Spiritual Reflection:**
+This dream may be encouraging you to reflect on your current spiritual path. The challenges you faced in the dream could represent obstacles you're currently navigating in your waking life, while the resolution suggests Allah's guidance is present even in difficult times.
+
+Consider spending more time in prayer and reflection, particularly focusing on the areas of your life where you feel uncertain. The dream suggests a positive outcome awaits if you maintain faith and patience.
+
+May Allah guide you and grant you clarity on your path forward.
+`;
 
 export const useDreamActions = (state: any) => {
   const { toast } = useToast();
@@ -41,8 +65,8 @@ export const useDreamActions = (state: any) => {
         state.user.id
       );
       
-      // Run the assistant to get the first question
-      const assistantResponse = await state.runAssistantAndGetResponse(threadId);
+      // In demo mode, use the first sample question
+      const assistantResponse = SAMPLE_QUESTIONS[0];
       
       // Create a new session with the messages
       const session: InterpretationSession = {
@@ -128,15 +152,17 @@ export const useDreamActions = (state: any) => {
         messages: updatedMessages
       });
       
-      // Send the question to the assistant
-      await state.sendMessageToAssistant(
-        state.threadId, 
-        question, 
-        state.user.id
-      );
+      // In demo mode, use the sample questions
+      let assistantResponse = "";
+      const questionNumber = state.currentSession.currentQuestion;
       
-      // Run the assistant to get the response
-      const assistantResponse = await state.runAssistantAndGetResponse(state.threadId);
+      if (questionNumber >= 3) {
+        // If this is the third question, provide the full interpretation
+        assistantResponse = SAMPLE_INTERPRETATION;
+      } else {
+        // Otherwise, provide the next question
+        assistantResponse = SAMPLE_QUESTIONS[questionNumber];
+      }
       
       // Add the assistant's response to the session
       const newAIMessage: Message = {
@@ -215,15 +241,20 @@ export const useDreamActions = (state: any) => {
         messages: updatedMessages
       });
       
-      // Send the answer to the assistant
-      await state.sendMessageToAssistant(
-        state.threadId, 
-        answer, 
-        state.user.id
-      );
+      // In demo mode, use the sample questions or provide the interpretation
+      let assistantResponse = "";
+      const questionNumber = state.currentSession.currentQuestion;
       
-      // Run the assistant to get the response
-      const assistantResponse = await state.runAssistantAndGetResponse(state.threadId);
+      if (questionNumber >= 3) {
+        // If this is the third question, provide the full interpretation
+        assistantResponse = SAMPLE_INTERPRETATION;
+      } else {
+        // Otherwise, provide the next question
+        assistantResponse = SAMPLE_QUESTIONS[questionNumber];
+      }
+      
+      const nextQuestionNumber = state.currentSession.currentQuestion + 1;
+      const isInterpretationComplete = nextQuestionNumber > 3;
       
       // Add the assistant's response to the session
       const newAIMessage: Message = {
@@ -233,9 +264,6 @@ export const useDreamActions = (state: any) => {
         sender: "ai",
         timestamp: new Date().toISOString()
       };
-      
-      const nextQuestionNumber = state.currentSession.currentQuestion + 1;
-      const isInterpretationComplete = nextQuestionNumber > 3;
       
       // Update the current session
       state.setCurrentSession({

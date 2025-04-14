@@ -78,10 +78,9 @@ export const useDreamActions = (state: any) => {
       state.setCurrentSession(session);
       console.log("Session created with first question");
       
-      // Save dream to database
+      // Save dream to database - FIX: Don't provide the ID when inserting, let Supabase generate it
       console.log("Saving dream to database");
       const { error } = await supabase.from('dreams').insert({
-        id: state.currentDream.id,
         user_id: state.user.id,
         dream_text: state.currentDream.dream_text,
         status: "interpreting"

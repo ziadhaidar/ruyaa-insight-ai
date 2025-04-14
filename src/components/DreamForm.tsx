@@ -43,20 +43,10 @@ const DreamForm: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Save dream to Supabase
-      const { error, data } = await supabase
-        .from('dreams')
-        .insert({
-          user_id: user.id,
-          dream_text: dreamContent,
-        })
-        .select('id')
-        .single();
-
-      if (error) throw error;
-      
-      // Use existing dream session management
+      // Start a new dream session first (uses local state)
       startNewDreamSession(dreamContent);
+      
+      // Navigate to the payment page - the actual saving to database happens in processDreamInterpretation
       navigate("/payment");
       
       toast({

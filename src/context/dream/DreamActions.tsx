@@ -43,15 +43,7 @@ export const useDreamActions = (state: any) => {
       );
       
       // Get the first question from the assistant
-      let firstQuestion;
-      try {
-        // Run the assistant with instructions to ask the first question
-        firstQuestion = await state.runAssistantAndGetResponse(threadId, 1);
-      } catch (error) {
-        console.error("Error getting first question:", error);
-        // Fallback question
-        firstQuestion = "Could you share more details about the colors you saw in your dream?";
-      }
+      const firstQuestion = await state.runAssistantAndGetResponse(threadId, 1);
       
       // Create a new session with the initial message exchange
       const session: InterpretationSession = {
@@ -98,8 +90,8 @@ export const useDreamActions = (state: any) => {
     } catch (error: any) {
       console.error("Error processing dream interpretation:", error);
       toast({
-        title: "Error",
-        description: "Couldn't process your dream interpretation, please try again later.",
+        title: "OpenAI Error",
+        description: `Error: ${error.message}`,
         variant: "destructive"
       });
       throw error; // Re-throw to handle in the component
@@ -148,23 +140,7 @@ export const useDreamActions = (state: any) => {
       const nextQuestionNumber = state.currentSession.currentQuestion + 1;
       
       // Get next question or final interpretation from the assistant
-      let assistantResponse;
-      try {
-        // Pass the question number to get appropriate instructions
-        assistantResponse = await state.runAssistantAndGetResponse(state.threadId, nextQuestionNumber);
-      } catch (error) {
-        console.error("Error getting assistant response:", error);
-        
-        // Fallback responses based on question number
-        if (nextQuestionNumber === 2) {
-          assistantResponse = "Were there any specific people or characters in your dream that stood out to you?";
-        } else if (nextQuestionNumber === 3) {
-          assistantResponse = "How did you feel during this dream? Were you scared, happy, confused, or something else?";
-        } else {
-          // Final interpretation fallback (after all 3 questions)
-          assistantResponse = "Based on your dream description and your responses, I can provide this Islamic interpretation:\n\nالرُّؤْيَا الصَّالِحَةُ مِنَ اللهِ\n\"A good dream is from Allah.\"\n\nYour dream suggests a journey of spiritual growth. The elements you've described align with themes of self-discovery and divine guidance. The Prophet Muhammad (peace be upon him) taught us that dreams are one of the forty-six parts of prophethood.\n\nThe Quran says: \"اللَّهُ نُورُ السَّمَاوَاتِ وَالْأَرْضِ\" - \"Allah is the Light of the heavens and the earth.\" (Quran 24:35)\n\nThis verse reminds us that Allah's guidance illuminates our path, even in times of uncertainty. Consider increasing your prayers and reflection during this period. Pay attention to the signs around you, as they may contain guidance specifically meant for you.";
-        }
-      }
+      const assistantResponse = await state.runAssistantAndGetResponse(state.threadId, nextQuestionNumber);
       
       const isInterpretationComplete = nextQuestionNumber > 3;
       
@@ -209,8 +185,8 @@ export const useDreamActions = (state: any) => {
     } catch (error: any) {
       console.error("Error submitting answer:", error);
       toast({
-        title: "Error",
-        description: "Couldn't process your answer, please try again later.",
+        title: "OpenAI Error",
+        description: `Error: ${error.message}`,
         variant: "destructive"
       });
       throw error; // Re-throw to handle in component
@@ -252,7 +228,7 @@ export const useDreamActions = (state: any) => {
       console.error("Error completing dream interpretation:", error);
       toast({
         title: "Error",
-        description: "Couldn't save your dream interpretation, please try again later.",
+        description: `Couldn't save your dream interpretation: ${error.message}`,
         variant: "destructive"
       });
     }
@@ -269,7 +245,7 @@ export const useDreamActions = (state: any) => {
       console.error("Error sending email:", error);
       toast({
         title: "Error",
-        description: "Couldn't send the interpretation to your email, please try again later.",
+        description: `Couldn't send the interpretation to your email: ${error.message}`,
         variant: "destructive"
       });
     }
@@ -298,7 +274,7 @@ export const useDreamActions = (state: any) => {
       console.error("Error saving interpretation:", error);
       toast({
         title: "Error",
-        description: "Couldn't save your dream interpretation, please try again later.",
+        description: `Couldn't save your dream interpretation: ${error.message}`,
         variant: "destructive"
       });
     }

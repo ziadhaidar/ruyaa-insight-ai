@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import Layout from "@/components/Layout";
 import { useToast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 const DreamDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +20,13 @@ const DreamDetailPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Store current route to localStorage when page loads
+    if (id) {
+      localStorage.setItem('lastRoute', `/dreams/${id}`);
+    }
+  }, [id]);
 
   useEffect(() => {
     const fetchDreamDetail = async () => {
@@ -46,6 +54,7 @@ const DreamDetailPage: React.FC = () => {
           return;
         }
 
+        console.log("Dream details fetched:", data);
         setDream(data);
       } catch (error: any) {
         console.error("Error fetching dream details:", error);
@@ -83,13 +92,31 @@ const DreamDetailPage: React.FC = () => {
     );
   }
 
+  // Determine dream status
+  let status = "draft";
+  if (dream.interpretation) {
+    status = "submitted";
+  } else if (dream.status === "interpreting") {
+    status = "in progress";
+  } else if (dream.status === "completed") {
+    status = "submitted";
+  }
+
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
-              <span>Dream from {format(new Date(dream.created_at), "MMMM d, yyyy")}</span>
+              <div className="flex items-center gap-2">
+                <span>Dream from {format(new Date(dream.created_at), "MMMM d, yyyy")}</span>
+                <Badge 
+                  variant={status === "submitted" ? "success" : "outline"} 
+                  className={status === "submitted" ? "bg-green-600" : "bg-amber-500 text-white"}
+                >
+                  {status}
+                </Badge>
+              </div>
               <Button variant="outline" size="sm" onClick={() => navigate("/dreams")}>
                 Back to Dreams
               </Button>

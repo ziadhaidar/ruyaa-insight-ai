@@ -1,9 +1,8 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { DreamProvider } from "@/context/DreamContext";
@@ -30,6 +29,7 @@ const ProtectedRoute = ({ children, requireProfile = true }: { children: React.R
   const { user, isLoading, hasCompleteProfile } = useAuth();
   const [isChecking, setIsChecking] = useState(true);
   const [redirectPath, setRedirectPath] = useState<string | null>(null);
+  const location = useLocation();
   
   useEffect(() => {
     if (!isLoading) {
@@ -41,6 +41,10 @@ const ProtectedRoute = ({ children, requireProfile = true }: { children: React.R
         setRedirectPath("/complete-profile");
       } else {
         setRedirectPath(null);
+        // Save current path to localStorage if it's a valid authenticated route
+        if (user && location.pathname !== '/login' && location.pathname !== '/register') {
+          localStorage.setItem('lastRoute', location.pathname);
+        }
       }
       
       // Short delay to ensure everything is updated
@@ -50,7 +54,7 @@ const ProtectedRoute = ({ children, requireProfile = true }: { children: React.R
       
       return () => clearTimeout(timer);
     }
-  }, [isLoading, user, hasCompleteProfile, requireProfile]);
+  }, [isLoading, user, hasCompleteProfile, requireProfile, location.pathname]);
   
   if (isLoading || isChecking) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -67,7 +71,29 @@ const ProtectedRoute = ({ children, requireProfile = true }: { children: React.R
 // Landing page redirect component
 const LandingRedirect = () => {
   const { user } = useAuth();
-  return user ? <Navigate to="/home" replace /> : <LandingPage />;
+  const location = useLocation();
+  
+  useEffect(() => {
+    // Check if there's a saved route and restore it after login
+    if (user) {
+      const lastRoute = localStorage.getItem('lastRoute');
+      if (lastRoute && lastRoute !== '/' && lastRoute !== '/login' && lastRoute !== '/register') {
+        console.log("Restoring last route:", lastRoute);
+        // We'll handle this with the Navigate component
+      }
+    }
+  }, [user]);
+  
+  // Redirect to the last route if available, otherwise to home
+  if (user) {
+    const lastRoute = localStorage.getItem('lastRoute');
+    if (lastRoute && lastRoute !== '/' && lastRoute !== '/login' && lastRoute !== '/register') {
+      return <Navigate to={lastRoute} replace />;
+    }
+    return <Navigate to="/home" replace />;
+  }
+  
+  return <LandingPage />;
 };
 
 const AppRoutes = () => {

@@ -39,6 +39,7 @@ const PastDreamsTable: React.FC = () => {
           
         if (error) throw error;
         
+        console.log("Dreams fetched from database:", data);
         setDreams(data || []);
       } catch (error) {
         console.error("Error fetching dreams:", error);
@@ -99,13 +100,27 @@ const PastDreamsTable: React.FC = () => {
           </TableHeader>
           <TableBody>
             {dreams.map((dream) => {
-              // Determine status based on interpretation field
-              const status = dream.interpretation ? "submitted" : "draft";
+              // Determine status based on both interpretation and status fields
+              let status = "draft";
+              if (dream.interpretation) {
+                status = "submitted";
+              } else if (dream.status === "interpreting") {
+                status = "in progress";
+              } else if (dream.status === "completed") {
+                status = "submitted";
+              }
+              
+              // Determine badge style based on status
+              const badgeVariant = status === "submitted" ? "success" : 
+                                  status === "in progress" ? "outline" : "outline";
+              const badgeClass = status === "submitted" ? "bg-green-600" : 
+                                status === "in progress" ? "bg-amber-500 text-white" : "bg-amber-500 text-white";
+              
               // Determine plan based on the status field or other logic
               const plan = dream.status === "paid" ? "Paid" : "Free";
               
               return (
-                <TableRow key={dream.id}>
+                <TableRow key={dream.id} className="cursor-pointer" onClick={() => navigate(`/dreams/${dream.id}`)}>
                   <TableCell>
                     {format(new Date(dream.created_at), "MMM d, yyyy")}
                   </TableCell>
@@ -113,7 +128,7 @@ const PastDreamsTable: React.FC = () => {
                     {dream.dream_text}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={status === "submitted" ? "success" : "outline"} className={status === "submitted" ? "bg-green-600" : "bg-amber-500 text-white"}>
+                    <Badge variant={badgeVariant as any} className={badgeClass}>
                       {status}
                     </Badge>
                   </TableCell>
@@ -121,7 +136,10 @@ const PastDreamsTable: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/dreams/${dream.id}`)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/dreams/${dream.id}`);
+                      }}
                     >
                       {plan}
                     </Button>

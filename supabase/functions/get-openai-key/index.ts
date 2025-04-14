@@ -16,6 +16,7 @@ serve(async (req) => {
     const { key } = await req.json()
     
     if (!key) {
+      console.error("Error: Key parameter is required")
       return new Response(
         JSON.stringify({ error: 'Key parameter is required' }),
         { 
@@ -27,8 +28,10 @@ serve(async (req) => {
     
     // Get the API key from Deno environment variables
     const apiKey = Deno.env.get(key)
+    console.log(`Looking for key: ${key}, Found key: ${apiKey ? "Yes" : "No"}`)
     
     if (!apiKey) {
+      console.error(`Error: Key '${key}' not found in environment variables`)
       return new Response(
         JSON.stringify({ error: `Key '${key}' not found in environment variables` }),
         { 
@@ -46,6 +49,7 @@ serve(async (req) => {
       }
     )
   } catch (error) {
+    console.error('Error in get-openai-key function:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

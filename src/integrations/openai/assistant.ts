@@ -42,6 +42,7 @@ const getApiKey = async (): Promise<string> => {
   }
   
   try {
+    console.log("Fetching API key from Supabase edge function");
     // Try to get from Supabase
     const { data, error } = await supabase.functions.invoke('get-openai-key', {
       body: { key: 'OPENAI_API_KEY' },
@@ -53,9 +54,11 @@ const getApiKey = async (): Promise<string> => {
     }
     
     if (!data || !data.key) {
-      throw new Error("No API key found in Supabase");
+      console.error("No API key found in response:", data);
+      throw new Error("No API key found in Supabase response");
     }
     
+    console.log("Successfully retrieved API key from Supabase");
     return data.key;
   } catch (error) {
     console.error("Error in getApiKey:", error);
@@ -81,9 +84,14 @@ export const createThread = async (): Promise<OpenAIThread> => {
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      console.error('Error response from OpenAI:', error);
-      throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+      const errorText = await response.text();
+      console.error('Error response from OpenAI:', errorText);
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+      } catch (e) {
+        throw new Error(`API error: ${response.status} - ${errorText}`);
+      }
     }
     
     const thread = await response.json();
@@ -132,9 +140,13 @@ Dream Content:
 ${content}`;
       
       messageContent = userContext;
+    } else {
+      console.log("No profile data found, using dream content only");
     }
 
     const apiKey = await getApiKey();
+    
+    console.log(`Sending message to OpenAI thread ${threadId}`, { threadId, contentLength: messageContent.length });
     
     const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: 'POST',
@@ -150,9 +162,14 @@ ${content}`;
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      console.error('Error response from OpenAI:', error);
-      throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+      const errorText = await response.text();
+      console.error('Error response from OpenAI:', errorText);
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+      } catch (e) {
+        throw new Error(`API error: ${response.status} - ${errorText}`);
+      }
     }
     
     const message = await response.json();
@@ -170,7 +187,7 @@ export const runAssistant = async (
   instructions?: string
 ): Promise<OpenAIRun> => {
   try {
-    console.log(`Running assistant on thread ${threadId}`);
+    console.log(`Running assistant on thread ${threadId} with instructions: ${instructions || "none"}`);
     
     const apiKey = await getApiKey();
     
@@ -183,6 +200,8 @@ export const runAssistant = async (
       body.instructions = instructions;
     }
     
+    console.log("Run assistant request:", { threadId, assistantId: ASSISTANT_ID, hasInstructions: !!instructions });
+    
     const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
       method: 'POST',
       headers: {
@@ -194,13 +213,18 @@ export const runAssistant = async (
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      console.error('Error response from OpenAI:', error);
-      throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+      const errorText = await response.text();
+      console.error('Error response from OpenAI:', errorText);
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+      } catch (e) {
+        throw new Error(`API error: ${response.status} - ${errorText}`);
+      }
     }
     
     const run = await response.json();
-    console.log("Assistant run initiated:", run.id);
+    console.log("Assistant run initiated:", run.id, "with status:", run.status);
     return run;
   } catch (error) {
     console.error("Error running assistant:", error);
@@ -224,9 +248,14 @@ export const checkRunStatus = async (threadId: string, runId: string): Promise<O
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      console.error('Error response from OpenAI:', error);
-      throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+      const errorText = await response.text();
+      console.error('Error response from OpenAI:', errorText);
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+      } catch (e) {
+        throw new Error(`API error: ${response.status} - ${errorText}`);
+      }
     }
     
     const run = await response.json();
@@ -254,9 +283,14 @@ export const getMessages = async (threadId: string): Promise<OpenAIMessage[]> =>
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      console.error('Error response from OpenAI:', error);
-      throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+      const errorText = await response.text();
+      console.error('Error response from OpenAI:', errorText);
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(`API error: ${response.status} - ${JSON.stringify(error)}`);
+      } catch (e) {
+        throw new Error(`API error: ${response.status} - ${errorText}`);
+      }
     }
     
     const result = await response.json();

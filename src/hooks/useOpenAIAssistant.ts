@@ -20,6 +20,7 @@ export const useOpenAIAssistant = () => {
   // Create a new OpenAI thread
   const createAssistantThread = async () => {
     try {
+      setIsLoading(true);
       const thread = await createThread();
       
       if (!thread) {
@@ -33,16 +34,20 @@ export const useOpenAIAssistant = () => {
       console.error("Error creating assistant thread:", error);
       toast({
         title: "OpenAI Connection Error",
-        description: "Could not establish a connection to the OpenAI service.",
+        description: `Could not establish a connection to the OpenAI service: ${error.message}`,
         variant: "destructive"
       });
       throw error; // Rethrow to let calling code handle it
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Add a message to the thread
   const sendMessageToAssistant = async (threadId: string, content: string, userId: string) => {
     try {
+      setIsLoading(true);
+      console.log(`Sending message to assistant on thread ${threadId}`);
       const message = await addMessageToThread(threadId, content, userId);
       if (!message) {
         throw new Error("Failed to add message to thread");
@@ -53,10 +58,12 @@ export const useOpenAIAssistant = () => {
       console.error("Error sending message to assistant:", error);
       toast({
         title: "Message Error",
-        description: "Could not send your message to the assistant.",
+        description: `Could not send your message to the assistant: ${error.message}`,
         variant: "destructive"
       });
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -81,6 +88,7 @@ export const useOpenAIAssistant = () => {
       // Wait before checking again
       await new Promise(resolve => setTimeout(resolve, delayMs));
       attempts++;
+      console.log(`Polling attempt ${attempts}/${maxAttempts} for run ${runId}, status: ${status.status}`);
     }
     
     throw new Error("Maximum polling attempts reached");
@@ -100,6 +108,8 @@ export const useOpenAIAssistant = () => {
       instructions = "Generate a final interpretation with: (1) A detailed explanation, (2) A relevant Quranic verse in Arabic with translation, and (3) A spiritual conclusion.";
     }
     
+    console.log(`Running assistant with instructions for question ${questionNumber}: "${instructions}"`);
+    
     const run = await runAssistant(threadId, instructions);
     if (!run) {
       throw new Error("Failed to run assistant");
@@ -112,6 +122,9 @@ export const useOpenAIAssistant = () => {
   // Run the assistant and wait for a response
   const runAssistantAndGetResponse = async (threadId: string, questionNumber: number = 1) => {
     try {
+      setIsLoading(true);
+      console.log(`Running assistant for question ${questionNumber} on thread ${threadId}`);
+      
       // Run the assistant on the thread with appropriate instructions
       const run = await runAssistantWithInstructions(threadId, questionNumber);
       
@@ -150,6 +163,8 @@ export const useOpenAIAssistant = () => {
         variant: "destructive"
       });
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 

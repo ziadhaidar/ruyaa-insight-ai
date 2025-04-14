@@ -6,7 +6,7 @@ import LoadingAnimation from "@/components/LoadingAnimation";
 import { useDream } from "@/context/DreamContext";
 
 const InterpretationPage: React.FC = () => {
-  const { currentSession } = useDream();
+  const { currentSession, isLoading } = useDream();
   
   return (
     <Layout>
@@ -14,7 +14,7 @@ const InterpretationPage: React.FC = () => {
         <InterpretationChat />
       ) : (
         <div className="h-[60vh] flex items-center justify-center">
-          <LoadingAnimation message="Preparing dream interpretation..." />
+          <LoadingAnimation message={isLoading ? "Preparing dream interpretation..." : "Please submit a dream to begin interpretation"} />
         </div>
       )}
     </Layout>

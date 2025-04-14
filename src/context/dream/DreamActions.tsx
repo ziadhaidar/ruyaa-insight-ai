@@ -22,10 +22,13 @@ export const useDreamActions = (state: any) => {
     state.setIsLoading(true);
     
     try {
+      console.log("Starting dream interpretation process");
+      
       // Create a new OpenAI thread
       let threadId = state.threadId;
       
       if (!threadId) {
+        console.log("No existing threadId, creating new thread");
         threadId = await state.createAssistantThread();
         
         if (!threadId) {
@@ -33,9 +36,11 @@ export const useDreamActions = (state: any) => {
         }
         
         state.setThreadId(threadId);
+        console.log("Created and set new threadId:", threadId);
       }
       
       // Send the dream to the assistant
+      console.log("Sending dream to the assistant");
       await state.sendMessageToAssistant(
         threadId, 
         state.currentDream.dream_text, 
@@ -43,7 +48,9 @@ export const useDreamActions = (state: any) => {
       );
       
       // Get the first question from the assistant
+      console.log("Getting first question from assistant");
       const firstQuestion = await state.runAssistantAndGetResponse(threadId, 1);
+      console.log("Received first question:", firstQuestion);
       
       // Create a new session with the initial message exchange
       const session: InterpretationSession = {
@@ -69,8 +76,10 @@ export const useDreamActions = (state: any) => {
       };
       
       state.setCurrentSession(session);
+      console.log("Session created with first question");
       
       // Save dream to database
+      console.log("Saving dream to database");
       const { error } = await supabase.from('dreams').insert({
         id: state.currentDream.id,
         user_id: state.user.id,
@@ -85,13 +94,15 @@ export const useDreamActions = (state: any) => {
           description: "Your dream interpretation has started, but there was an issue saving it to your history.",
           variant: "destructive"
         });
+      } else {
+        console.log("Dream saved to database successfully");
       }
       
     } catch (error: any) {
       console.error("Error processing dream interpretation:", error);
       toast({
-        title: "OpenAI Error",
-        description: `Error: ${error.message}`,
+        title: "Dream Interpretation Error",
+        description: `Couldn't process your dream interpretation: ${error.message}`,
         variant: "destructive"
       });
       throw error; // Re-throw to handle in the component
@@ -114,6 +125,8 @@ export const useDreamActions = (state: any) => {
     state.setIsLoading(true);
     
     try {
+      console.log("Submitting answer for question", state.currentSession.currentQuestion);
+      
       // Add the user's answer to the session
       const newUserMessage: Message = {
         id: uuidv4(),
@@ -130,6 +143,7 @@ export const useDreamActions = (state: any) => {
       });
       
       // Send answer to the assistant
+      console.log("Sending answer to the assistant");
       await state.sendMessageToAssistant(
         state.threadId,
         answer,
@@ -138,9 +152,12 @@ export const useDreamActions = (state: any) => {
       
       // Determine the next question number
       const nextQuestionNumber = state.currentSession.currentQuestion + 1;
+      console.log("Next question number:", nextQuestionNumber);
       
       // Get next question or final interpretation from the assistant
+      console.log("Getting response from assistant");
       const assistantResponse = await state.runAssistantAndGetResponse(state.threadId, nextQuestionNumber);
+      console.log("Received assistant response");
       
       const isInterpretationComplete = nextQuestionNumber > 3;
       
@@ -163,6 +180,7 @@ export const useDreamActions = (state: any) => {
       
       // Update dream in database
       if (isInterpretationComplete) {
+        console.log("Interpretation complete, updating dream status to completed");
         const { error } = await supabase.from('dreams').update({
           status: "completed",
           interpretation: assistantResponse
@@ -170,22 +188,27 @@ export const useDreamActions = (state: any) => {
         
         if (error) {
           console.error("Error updating dream:", error);
+        } else {
+          console.log("Dream updated to completed successfully");
         }
       } else {
         // Just update the status if we're still in the questioning phase
+        console.log("Still in questioning phase, updating dream status");
         const { error } = await supabase.from('dreams').update({
           status: "interpreting"
         }).eq('id', state.currentSession.dream.id);
         
         if (error) {
           console.error("Error updating dream status:", error);
+        } else {
+          console.log("Dream status updated successfully");
         }
       }
       
     } catch (error: any) {
       console.error("Error submitting answer:", error);
       toast({
-        title: "OpenAI Error",
+        title: "Assistant Error",
         description: `Error: ${error.message}`,
         variant: "destructive"
       });
@@ -205,6 +228,8 @@ export const useDreamActions = (state: any) => {
     if (!state.currentSession) return;
     
     try {
+      console.log("Completing dream interpretation");
+      
       // Find the last AI message which should be the interpretation
       const aiMessages = state.currentSession.messages.filter((m: Message) => m.sender === "ai");
       const interpretation = aiMessages[aiMessages.length - 1]?.content || "";

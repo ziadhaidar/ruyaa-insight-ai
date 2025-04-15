@@ -120,62 +120,62 @@ export const useOpenAIAssistant = () => {
   };
 
   // Run the assistant and wait for a response
-  const runAssistantAndGetResponse = async (threadId: string, questionNumber: number = 1) => {
-    try {
-      setIsLoading(true);
-      console.log(`Running assistant for question ${questionNumber} on thread ${threadId}`);
-      
-      // Run the assistant on the thread with appropriate instructions
-      const run = await runAssistantWithInstructions(threadId, questionNumber);
-      
-      // Poll for completion
-      const runResult = await pollRunStatus(threadId, run.id);
-      console.log("Run completed with status:", runResult.status);
-      
-      // Get the assistant's response
-      const messages = await getMessages(threadId);
-      
-      if (!messages || messages.length === 0) {
-        throw new Error("No messages found after run completion");
-      }
-      
-      // Find the assistant's response (the latest assistant message)
-      const assistantMessages = messages.filter(m => m.role === "assistant");
-      const latestAssistantMessage = assistantMessages[0]; // They come in reverse chronological order
-      
-      if (!latestAssistantMessage) {
-        throw new Error("No assistant message found after run completion");
-      }
-      
-      // Extract the text from the assistant's response
-      const responseText = latestAssistantMessage.content[0]?.text?.value;
-      if (!responseText) {
-        throw new Error("Assistant message has no text content");
-      }
+ const runAssistantAndGetResponse = async (threadId: string, questionNumber: number = 1) => {
+  try {
+    setIsLoading(true);
+    console.log(`Running assistant for question ${questionNumber} on thread ${threadId}`);
 
-      // Inside runAssistantAndGetResponse
-if (questionNumber > 3) {
-  // Save to Supabase
-  await saveDreamInterpretation({
-    dreamId: threadId, // or use a separate dreamId if threadId !== dreamId
-    interpretation: responseText,
-    // Optionally collect all answers here if needed
-  });
-  
-      console.log("Got assistant response:", responseText.substring(0, 50) + "...");
-      return responseText;
-    } catch (error) {
-      console.error("Error running assistant:", error);
-      toast({
-        title: "Assistant Error",
-        description: `Error: ${error.message}`,
-        variant: "destructive"
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
+    // Run the assistant on the thread with appropriate instructions
+    const run = await runAssistantWithInstructions(threadId, questionNumber);
+
+    // Poll for completion
+    const runResult = await pollRunStatus(threadId, run.id);
+    console.log("Run completed with status:", runResult.status);
+
+    // Get the assistant's response
+    const messages = await getMessages(threadId);
+
+    if (!messages || messages.length === 0) {
+      throw new Error("No messages found after run completion");
     }
-  };
+
+    // Find the assistant's response (the latest assistant message)
+    const assistantMessages = messages.filter(m => m.role === "assistant");
+    const latestAssistantMessage = assistantMessages[0]; // Reverse chronological
+
+    if (!latestAssistantMessage) {
+      throw new Error("No assistant message found after run completion");
+    }
+
+    // Extract the text from the assistant's response
+    const responseText = latestAssistantMessage.content[0]?.text?.value;
+    if (!responseText) {
+      throw new Error("Assistant message has no text content");
+    }
+
+    if (questionNumber > 3) {
+      // Save to Supabase
+      await saveDreamInterpretation({
+        dreamId: threadId,
+        interpretation: responseText,
+      });
+    }
+
+    console.log("Got assistant response:", responseText.substring(0, 50) + "...");
+    return responseText;
+
+  } catch (error) {
+    console.error("Error running assistant:", error);
+    toast({
+      title: "Assistant Error",
+      description: `Error: ${error.message}`,
+      variant: "destructive"
+    });
+    throw error;
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // Get the number of questions answered so far
   const getAnsweredQuestionsCount = async (threadId: string) => {

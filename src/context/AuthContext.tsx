@@ -77,12 +77,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           if (event === 'SIGNED_IN') {
   const currentPath = window.location.pathname;
-  const isNeutralPath = ['/', '/login', '/register', '/auth'].includes(currentPath);
+  
+  if (currentPath === '/') {
+            console.log("Already on homepage, skipping redirection.");
+            return;
+          }
 
   if (!isComplete && currentPath !== '/complete-profile') {
     console.log("Redirecting to complete profile");
     navigate('/complete-profile', { replace: true });
-  } else if (isComplete && isNeutralPath) {
+  } else if (isComplete && ['/', '/login', '/register', '/auth'].includes(currentPath)) {
     console.log("Profile is complete and on neutral page, navigating to dreams");
     navigate('/dreams', { replace: true });
   } else {

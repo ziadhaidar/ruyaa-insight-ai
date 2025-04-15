@@ -10,6 +10,11 @@ const InterpretationPage: React.FC = () => {
   const { currentSession, isLoading } = useDream();
   const { toast } = useToast();
   
+  // Save interpretation page route
+  useEffect(() => {
+    localStorage.setItem('lastRoute', '/interpretation');
+  }, []);
+  
   useEffect(() => {
     // Display information about the version update
     toast({

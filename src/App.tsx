@@ -1,11 +1,13 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { DreamProvider } from "@/context/DreamContext";
+import { useEffect, useState } from "react";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -20,7 +22,6 @@ import DreamDetailPage from "./pages/DreamDetailPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
-import { useEffect, useState } from "react";
 
 const queryClient = new QueryClient();
 
@@ -42,8 +43,13 @@ const ProtectedRoute = ({ children, requireProfile = true }: { children: React.R
       } else {
         setRedirectPath(null);
         // Save current path to localStorage if it's a valid authenticated route
-        if (user && location.pathname !== '/login' && location.pathname !== '/register') {
-          localStorage.setItem('lastRoute', location.pathname);
+        // Only save routes we want to restore (not login, register, etc.)
+        if (user && 
+            location.pathname !== '/login' && 
+            location.pathname !== '/register' && 
+            location.pathname !== '/auth' &&
+            location.pathname !== '/complete-profile') {
+          localStorage.setItem('lastRoute', location.pathname + location.search);
         }
       }
       
@@ -54,7 +60,7 @@ const ProtectedRoute = ({ children, requireProfile = true }: { children: React.R
       
       return () => clearTimeout(timer);
     }
-  }, [isLoading, user, hasCompleteProfile, requireProfile, location.pathname]);
+  }, [isLoading, user, hasCompleteProfile, requireProfile, location.pathname, location.search]);
   
   if (isLoading || isChecking) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -68,84 +74,111 @@ const ProtectedRoute = ({ children, requireProfile = true }: { children: React.R
   return <>{children}</>;
 };
 
+// Route restoration component to handle session rehydration
+const RouteRestorer = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [hasRestored, setHasRestored] = useState(false);
+  
+  useEffect(() => {
+    // Only attempt route restoration once after auth is loaded 
+    // and only if we're on the home or dreams page (to avoid disrupting flows)
+    if (!isLoading && !hasRestored && user) {
+      const isDefaultPage = location.pathname === "/" || 
+                           location.pathname === "/home" || 
+                           location.pathname === "/dreams";
+      
+      if (isDefaultPage) {
+        const lastRoute = localStorage.getItem('lastRoute');
+        if (lastRoute && lastRoute !== location.pathname) {
+          console.log("Restoring last route from localStorage:", lastRoute);
+          navigate(lastRoute, { replace: true });
+        }
+      }
+      
+      setHasRestored(true);
+    }
+  }, [isLoading, user, location.pathname, navigate, hasRestored]);
+  
+  return <>{children}</>;
+};
+
 // Landing page redirect component
 const LandingRedirect = () => {
   const { user } = useAuth();
-  const location = useLocation();
+  const navigate = useNavigate();
+  const [attempted, setAttempted] = useState(false);
   
   useEffect(() => {
-    // Check if there's a saved route and restore it after login
-    if (user) {
+    if (user && !attempted) {
       const lastRoute = localStorage.getItem('lastRoute');
-      if (lastRoute && lastRoute !== '/' && lastRoute !== '/login' && lastRoute !== '/register') {
-        console.log("Restoring last route:", lastRoute);
-        // We'll handle this with the Navigate component
+      if (lastRoute && lastRoute !== '/' && 
+          lastRoute !== '/login' && lastRoute !== '/register') {
+        console.log("Restoring last route after login:", lastRoute);
+        navigate(lastRoute, { replace: true });
+      } else {
+        navigate("/home", { replace: true });
       }
+      setAttempted(true);
     }
-  }, [user]);
-  
-  // Redirect to the last route if available, otherwise to home
-  if (user) {
-    const lastRoute = localStorage.getItem('lastRoute');
-    if (lastRoute && lastRoute !== '/' && lastRoute !== '/login' && lastRoute !== '/register') {
-      return <Navigate to={lastRoute} replace />;
-    }
-    return <Navigate to="/home" replace />;
-  }
+  }, [user, navigate, attempted]);
   
   return <LandingPage />;
 };
 
 const AppRoutes = () => {
   return (
-    <Routes>
-      <Route path="/" element={<LandingRedirect />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/auth" element={<Index />} />
-      
-      {/* Profile completion route (accessible only when logged in) */}
-      <Route path="/complete-profile" element={
-        <ProtectedRoute requireProfile={false}>
-          <CompleteProfilePage />
-        </ProtectedRoute>
-      } />
-      
-      {/* Protected routes */}
-      <Route path="/home" element={
-        <ProtectedRoute>
-          <HomePage />
-        </ProtectedRoute>
-      } />
-      <Route path="/payment" element={
-        <ProtectedRoute>
-          <PaymentPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/interpretation" element={
-        <ProtectedRoute>
-          <InterpretationPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/dreams" element={
-        <ProtectedRoute>
-          <DreamsPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/dreams/:id" element={
-        <ProtectedRoute>
-          <DreamDetailPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <SettingsPage />
-        </ProtectedRoute>
-      } />
-      
-      {/* Not found */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <RouteRestorer>
+      <Routes>
+        <Route path="/" element={<LandingRedirect />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/auth" element={<Index />} />
+        
+        {/* Profile completion route (accessible only when logged in) */}
+        <Route path="/complete-profile" element={
+          <ProtectedRoute requireProfile={false}>
+            <CompleteProfilePage />
+          </ProtectedRoute>
+        } />
+        
+        {/* Protected routes */}
+        <Route path="/home" element={
+          <ProtectedRoute>
+            <HomePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/payment" element={
+          <ProtectedRoute>
+            <PaymentPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/interpretation" element={
+          <ProtectedRoute>
+            <InterpretationPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/dreams" element={
+          <ProtectedRoute>
+            <DreamsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/dreams/:id" element={
+          <ProtectedRoute>
+            <DreamDetailPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <SettingsPage />
+          </ProtectedRoute>
+        } />
+        
+        {/* Not found */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </RouteRestorer>
   );
 };
 

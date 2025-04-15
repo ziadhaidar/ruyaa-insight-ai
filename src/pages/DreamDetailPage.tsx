@@ -22,13 +22,6 @@ const DreamDetailPage: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Store current route to localStorage when page loads
-    if (id) {
-      localStorage.setItem('lastRoute', `/dreams/${id}`);
-    }
-  }, [id]);
-
-  useEffect(() => {
     const fetchDreamDetail = async () => {
       if (!user || !id) return;
 
@@ -71,6 +64,13 @@ const DreamDetailPage: React.FC = () => {
 
     fetchDreamDetail();
   }, [id, user, navigate, toast]);
+
+  // Update localStorage with current route whenever id changes
+  useEffect(() => {
+    if (id) {
+      localStorage.setItem('lastRoute', `/dreams/${id}`);
+    }
+  }, [id]);
 
   if (loading) {
     return (

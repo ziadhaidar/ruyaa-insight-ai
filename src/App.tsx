@@ -106,24 +106,6 @@ const RouteRestorer = ({ children }: { children: React.ReactNode }) => {
 
 // Landing page redirect component
 const LandingRedirect = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [attempted, setAttempted] = useState(false);
-  
-  useEffect(() => {
-    if (user && !attempted) {
-      const lastRoute = localStorage.getItem('lastRoute');
-      if (lastRoute && lastRoute !== '/' && 
-          lastRoute !== '/login' && lastRoute !== '/register') {
-        console.log("Restoring last route after login:", lastRoute);
-        navigate(lastRoute, { replace: true });
-      } else {
-        navigate("/home", { replace: true });
-      }
-      setAttempted(true);
-    }
-  }, [user, navigate, attempted]);
-  
   return <LandingPage />;
 };
 

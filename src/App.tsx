@@ -75,20 +75,20 @@ const ProtectedRoute = ({ children, requireProfile = true }: { children: React.R
 };
 
 // Route restoration component to handle session rehydration
+import { useRef } from "react"; // Add this at the top if not already imported
+
 const RouteRestorer = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [hasRestored, setHasRestored] = useState(false);
-  
+  const hasRestoredRef = useRef(false);
+
   useEffect(() => {
-    // Only attempt route restoration once after auth is loaded 
-    // and only if we're on the home or dreams page (to avoid disrupting flows)
-    if (!isLoading && !hasRestored && user) {
+    if (!isLoading && !hasRestoredRef.current && user) {
       const isDefaultPage = location.pathname === "/" || 
-                           location.pathname === "/home" || 
-                           location.pathname === "/dreams";
-      
+                            location.pathname === "/home" || 
+                            location.pathname === "/dreams";
+
       if (isDefaultPage) {
         const lastRoute = localStorage.getItem('lastRoute');
         if (lastRoute && lastRoute !== location.pathname) {
@@ -96,13 +96,14 @@ const RouteRestorer = ({ children }: { children: React.ReactNode }) => {
           navigate(lastRoute, { replace: true });
         }
       }
-      
-      setHasRestored(true);
+
+      hasRestoredRef.current = true;
     }
-  }, [isLoading, user, location.pathname, navigate, hasRestored]);
-  
+  }, [isLoading, user, location.pathname, navigate]);
+
   return <>{children}</>;
 };
+
 
 // Landing page redirect component
 const LandingRedirect = () => {

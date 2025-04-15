@@ -141,7 +141,7 @@ export default {
 				playfair: ['Playfair Display', 'serif']
 			},
 			backgroundImage: {
-				'islamic-pattern': "url('/patterns/islamic-pattern.svg')",
+				'islamic-pattern': "url('/islamic-pattern.svg')",
 				'islamic-gradient': 'linear-gradient(to right, #0A5F38, #1D4D4F)',
 				'dawn-gradient': 'linear-gradient(to right, #1D4D4F, #F5F5DC)'
 			}

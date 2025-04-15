@@ -108,20 +108,10 @@
   
   .islamic-pattern-bg {
   background-color: #F8F4E3;
-  background-image: url("/islamic-pattern.svg"); /* instead of data URI */
+  background-image: url("/islamic-pattern.svg"), linear-gradient(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.6)); /* instead of data URI */
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
-}
-.islamic-pattern-bg::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.7); /* Adjust transparency here (0.0 is fully transparent, 1.0 is fully opaque) */
-  z-index: 1;
 }
     
 }

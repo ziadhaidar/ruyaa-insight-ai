@@ -160,7 +160,7 @@ if (questionNumber > 3) {
     dreamId: threadId, // or use a separate dreamId if threadId !== dreamId
     interpretation: responseText,
     // Optionally collect all answers here if needed
-  }
+  });
   
       console.log("Got assistant response:", responseText.substring(0, 50) + "...");
       return responseText;

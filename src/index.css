@@ -109,8 +109,8 @@
   .islamic-pattern-bg {
   background-color: #F8F4E3;
   background-image: url("/islamic-pattern.svg"); /* instead of data URI */
-  background-repeat: repeat;
-  background-size: 300px;
+  background-repeat: no-repeat;
+  background-size: cover;
   background-position: center;
 }
 

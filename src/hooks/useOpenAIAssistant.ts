@@ -152,7 +152,16 @@ export const useOpenAIAssistant = () => {
       if (!responseText) {
         throw new Error("Assistant message has no text content");
       }
-      
+
+      // Inside runAssistantAndGetResponse
+if (questionNumber > 3) {
+  // Save to Supabase
+  await saveDreamInterpretation({
+    dreamId: threadId, // or use a separate dreamId if threadId !== dreamId
+    interpretation: responseText,
+    // Optionally collect all answers here if needed
+  }
+  
       console.log("Got assistant response:", responseText.substring(0, 50) + "...");
       return responseText;
     } catch (error) {
@@ -177,6 +186,40 @@ export const useOpenAIAssistant = () => {
       throw error;
     }
   };
+const saveDreamInterpretation = async ({
+  dreamId,
+  interpretation,
+  answers,
+}: {
+  dreamId: string;
+  interpretation: string;
+  answers?: any;
+}) => {
+  try {
+    const { error } = await supabase
+      .from('dreams')
+      .update({
+        interpretation,
+        answers,
+        status: "completed",
+      })
+      .eq('id', dreamId);
+
+    if (error) {
+      throw error;
+    }
+
+    console.log("Dream interpretation saved to Supabase");
+  } catch (error) {
+    console.error("Error saving interpretation:", error);
+    toast({
+      title: "Save Error",
+      description: `Could not save the dream interpretation: ${error.message}`,
+      variant: "destructive",
+    });
+    throw error;
+  }
+};
 
   return {
     threadId,
@@ -187,6 +230,7 @@ export const useOpenAIAssistant = () => {
     sendMessageToAssistant,
     runAssistantAndGetResponse,
     getAnsweredQuestionsCount,
+    saveDreamInterpretation,
     getLatestAssistantMessage
   };
 };

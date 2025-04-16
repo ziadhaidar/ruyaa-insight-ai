@@ -78,24 +78,37 @@ export const useDreamActions = (state: any) => {
       state.setCurrentSession(session);
       console.log("Session created with first question");
       
-      // Save dream to database - FIX: Don't provide the ID when inserting, let Supabase generate it
-      console.log("Saving dream to database");
-      const { error } = await supabase.from('dreams').insert({
-        user_id: state.user.id,
-        dream_text: state.currentDream.dream_text,
-        status: "interpreting"
-      });
-      
-      if (error) {
-        console.error("Error saving dream:", error);
-        toast({
-          title: "Warning",
-          description: "Your dream interpretation has started, but there was an issue saving it to your history.",
-          variant: "destructive"
-        });
-      } else {
-        console.log("Dream saved to database successfully");
-      }
+  // Save dream to database and capture the generated ID
+console.log("Saving dream to database");
+const { data, error } = await supabase.from('dreams').insert({
+  user_id: state.user.id,
+  dream_text: state.currentDream.dream_text,
+  status: "interpreting"
+}).select().single();
+
+if (error) {
+  console.error("Error saving dream:", error);
+  toast({
+    title: "Warning",
+    description: "Your dream interpretation has started, but there was an issue saving it to your history.",
+    variant: "destructive"
+  });
+} else {
+  console.log("Dream saved to database successfully", data);
+
+  // 🛠 Update the dream object in state with correct ID from Supabase
+  const updatedDream = { ...state.currentDream, id: data.id };
+  state.setCurrentDream(updatedDream);
+
+  // Also patch currentSession.dream if needed
+  if (state.currentSession) {
+    state.setCurrentSession({
+      ...state.currentSession,
+      dream: updatedDream
+    });
+  }
+}
+
       
     } catch (error: any) {
       console.error("Error processing dream interpretation:", error);

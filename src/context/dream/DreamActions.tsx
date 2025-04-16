@@ -91,7 +91,8 @@ console.log("Supabase response data:", data); // Log the data that is returned
 console.error("Supabase error (if any):", error); // Log any error returned by Supabase
 
 if (error) {
-  console.error("Error saving dream:", error.message);  // Log the error message
+  console.error("Error saving dream:", error.message, "Context: Failed to insert dream data into Supabase.");
+
   toast({
     title: "Warning",
     description: "Your dream interpretation has started, but there was an issue saving it to your history.",
@@ -224,7 +225,7 @@ if (error) {
         variant: "destructive"
       });
       throw error; // Re-throw to handle in component
-    finally {
+    } finally {
       state.setIsLoading(false);
     }
   };

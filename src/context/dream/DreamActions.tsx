@@ -128,7 +128,7 @@ if (error) {
     });
   }
 }
-
+    }
   
   // Submit an answer to a question
   const submitAnswer = async (answer: string) => {

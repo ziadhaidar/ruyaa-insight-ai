@@ -224,7 +224,7 @@ if (error) {
         variant: "destructive"
       });
       throw error; // Re-throw to handle in component
-    } finally {
+    finally {
       state.setIsLoading(false);
     }
   };

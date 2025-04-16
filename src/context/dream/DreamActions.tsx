@@ -86,9 +86,16 @@ const { data, error } = await supabase.from('dreams').insert({
   status: "interpreting"
 }).select().single();
 
-// This is where we log the response
-console.log("Supabase response data:", data); // Log the data that is returned
-console.error("Supabase error (if any):", error); // Log any error returned by Supabase
+if (error) {
+  console.error("Error saving dream:", error.message, "Context: Failed to insert dream data into Supabase.");
+  toast({
+    title: "Warning",
+    description: "Your dream interpretation has started, but there was an issue saving it to your history.",
+    variant: "destructive"
+  });
+} else {
+  console.log("Dream saved to database successfully:", data);
+}
 
 if (error) {
   console.error("Error saving dream:", error.message, "Context: Failed to insert dream data into Supabase.");
@@ -193,10 +200,17 @@ if (error) {
       // Update dream in database
       if (isInterpretationComplete) {
         console.log("Interpretation complete, updating dream status to completed");
-        const { error } = await supabase.from('dreams').update({
-          status: "completed",
-          interpretation: assistantResponse
-        }).eq('id', state.currentSession.dream.id);
+     const { error } = await supabase.from('dreams').update({
+  status: "completed",
+  interpretation: assistantResponse
+}).eq('id', state.currentSession.dream.id);
+
+if (error) {
+  console.error("Error updating dream status:", error.message, "Context: Failed to mark dream as completed.");
+} else {
+  console.log("Dream status updated to completed successfully.");
+}
+
         
         if (error) {
           console.error("Error updating dream:", error);

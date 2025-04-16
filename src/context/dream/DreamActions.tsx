@@ -78,16 +78,20 @@ export const useDreamActions = (state: any) => {
       state.setCurrentSession(session);
       console.log("Session created with first question");
       
-  // Save dream to database and capture the generated ID
 console.log("Saving dream to database");
+
 const { data, error } = await supabase.from('dreams').insert({
   user_id: state.user.id,
   dream_text: state.currentDream.dream_text,
   status: "interpreting"
 }).select().single();
 
+// This is where we log the response
+console.log("Supabase response data:", data); // Log the data that is returned
+console.error("Supabase error (if any):", error); // Log any error returned by Supabase
+
 if (error) {
-  console.error("Error saving dream:", error);
+  console.error("Error saving dream:", error.message);  // Log the error message
   toast({
     title: "Warning",
     description: "Your dream interpretation has started, but there was an issue saving it to your history.",
@@ -96,32 +100,27 @@ if (error) {
 } else {
   console.log("Dream saved to database successfully", data);
 
-  // 🛠 Update the dream object in state with correct ID from Supabase
-  const updatedDream = { ...state.currentDream, id: data.id };
-  state.setCurrentDream(updatedDream);
+  // If data is returned and contains the id, update the state
+  if (data && data.id) {
+    const updatedDream = { ...state.currentDream, id: data.id };
+    state.setCurrentDream(updatedDream);
 
-  // Also patch currentSession.dream if needed
-  if (state.currentSession) {
-    state.setCurrentSession({
-      ...state.currentSession,
-      dream: updatedDream
+    if (state.currentSession) {
+      state.setCurrentSession({
+        ...state.currentSession,
+        dream: updatedDream
+      });
+    }
+  } else {
+    console.error("Supabase response doesn't contain the dream ID:", data);
+    toast({
+      title: "Error",
+      description: "Failed to retrieve dream ID from Supabase response.",
+      variant: "destructive"
     });
   }
 }
 
-      
-    } catch (error: any) {
-      console.error("Error processing dream interpretation:", error);
-      toast({
-        title: "Dream Interpretation Error",
-        description: `Couldn't process your dream interpretation: ${error.message}`,
-        variant: "destructive"
-      });
-      throw error; // Re-throw to handle in the component
-    } finally {
-      state.setIsLoading(false);
-    }
-  };
   
   // Submit an answer to a question
   const submitAnswer = async (answer: string) => {

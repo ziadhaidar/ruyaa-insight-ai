@@ -153,13 +153,13 @@ export const useOpenAIAssistant = () => {
       throw new Error("Assistant message has no text content");
     }
 
-    if (questionNumber > 3) {
+    //if (questionNumber > 3) {
       // Save to Supabase
-      await saveDreamInterpretation({
-        dreamId: threadId,
-        interpretation: responseText,
-      });
-    }
+    //  await saveDreamInterpretation({
+      //  dreamId: threadId,
+      //  interpretation: responseText,
+  //    });
+   // }
 
     console.log("Got assistant response:", responseText.substring(0, 50) + "...");
     return responseText;

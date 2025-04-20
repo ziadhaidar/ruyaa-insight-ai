@@ -76,14 +76,25 @@ export const useDreamActions = (state: any) => {
         .select()
         .single();
 
+     // if (error) {
+       // console.error("Error saving dream:", error.message);
+       // toast({
+         // title: "Warning",
+        //  description: "Your dream interpretation started, but there was an issue saving it.",
+       //   variant: "destructive",
+      //  });
+     // } 
       if (error) {
-        console.error("Error saving dream:", error.message);
-        toast({
-          title: "Warning",
-          description: "Your dream interpretation started, but there was an issue saving it.",
-          variant: "destructive",
-        });
-      } else {
+  console.error("Error saving dream:", error.message);
+  toast({
+    title: "Error saving dream",
+    description: error.message,
+    variant: "destructive",
+  });
+  state.setIsLoading(false);
+  return;  // stop further processing when insert fails
+}
+else {
         console.log("Dream saved to database successfully:", data);
         if (data?.id) {
           const updatedDream = { ...state.currentDream, id: data.id };

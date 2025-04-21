@@ -130,8 +130,11 @@ else {
     // 2) record user message
     state.currentSession.messages.push({ sender: "user", content: answer });
 
-    // 3) get AI response
-    const aiResponse = await runAssistantAndGetResponse(answer);
+    
+    // 3) determine which question we’re on, then call the assistant on our thread
+    const userAnswers = state.currentSession.messages.filter(m => m.sender === "user");
+    const nextQuestionNumber = userAnswers.length;  // 2 for your first reply, 3 for second, 4 for third
+    const aiResponse = await state.runAssistantAndGetResponse(state.threadId!, nextQuestionNumber);
     state.currentSession.messages.push({ sender: "ai", content: aiResponse });
 
     // 4) check if we've now answered 3 times

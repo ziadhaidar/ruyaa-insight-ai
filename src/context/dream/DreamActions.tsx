@@ -66,15 +66,8 @@ export const useDreamActions = (state: any) => {
       console.log("Session created with first question");
 
       console.log("Saving dream to database");
-     // const { data, error } = await supabase
-      //  .from("dreams")
-       // .insert({
-     //     user_id: state.user.id,
-        //  dream_text: state.currentDream.dream_text,
-      //    status: "interpreting",
-    //    })
-  //      .select()
-    //    .single();
+     
+      
 const { data, error } = await supabase
      .from("dreams")
      .insert({
@@ -85,14 +78,8 @@ const { data, error } = await supabase
      })
      .select()
      .single();
-     // if (error) {
-       // console.error("Error saving dream:", error.message);
-       // toast({
-         // title: "Warning",
-        //  description: "Your dream interpretation started, but there was an issue saving it.",
-       //   variant: "destructive",
-      //  });
-     // } 
+
+      
       if (error) {
   console.error("Error saving dream:", error.message);
   toast({
@@ -135,49 +122,49 @@ else {
     }
   };
 
-+  // Submit user answer to assistant
-+  const submitAnswer = async (answer: string) => {
-+    // 1) set loading
-+    state.setIsLoading(true);
-+
-+    // 2) record user message
-+    state.currentSession.messages.push({ sender: "user", content: answer });
-+
-+    // 3) get AI response
-+    const aiResponse = await runAssistantAndGetResponse(answer);
-+    state.currentSession.messages.push({ sender: "ai", content: aiResponse });
-+
-+    // 4) check if we've now answered 3 times
-+    const userAnswers = state.currentSession.messages.filter(m => m.sender === "user");
-+    const isInterpretationComplete = userAnswers.length >= 3;
-+
-+    // 5) build full transcript
-+    const transcript = state.currentSession.messages
-+      .map(m => (m.sender === "user" ? `You: ${m.content}` : `AI: ${m.content}`))
-+      .join("\n\n");
-+
-+    // 6) save status and full conversation
-+    const { error } = await supabase
-+      .from("dreams")
-+      .update({
-+        status: isInterpretationComplete ? "completed" : "interpreting",
-+        interpretation: transcript,
-+      })
-+      .eq("id", state.currentSession.dream.id);
-+
-+    // 7) handle any DB errors
-+    if (error) {
-+      console.error("Error saving interpretation:", error.message);
-+      toast({
-+        title: "Error saving interpretation",
-+        description: error.message,
-+        variant: "destructive",
-+      });
-+    }
-+
-+    // 8) unset loading
-+    state.setIsLoading(false);
-+  };
+  // Submit user answer to assistant
+  const submitAnswer = async (answer: string) => {
+    // 1) set loading
+    state.setIsLoading(true);
+
+    // 2) record user message
+    state.currentSession.messages.push({ sender: "user", content: answer });
+
+    // 3) get AI response
+    const aiResponse = await runAssistantAndGetResponse(answer);
+    state.currentSession.messages.push({ sender: "ai", content: aiResponse });
+
+    // 4) check if we've now answered 3 times
+    const userAnswers = state.currentSession.messages.filter(m => m.sender === "user");
+    const isInterpretationComplete = userAnswers.length >= 3;
+
+    // 5) build full transcript
+    const transcript = state.currentSession.messages
+      .map(m => (m.sender === "user" ? `You: ${m.content}` : `AI: ${m.content}`))
+      .join("\n\n");
+
+    // 6) save status and full conversation
+    const { error } = await supabase
+      .from("dreams")
+      .update({
+        status: isInterpretationComplete ? "completed" : "interpreting",
+        interpretation: transcript,
+      })
+      .eq("id", state.currentSession.dream.id);
+
+    // 7) handle any DB errors
+    if (error) {
+      console.error("Error saving interpretation:", error.message);
+      toast({
+        title: "Error saving interpretation",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+
+    // 8) unset loading
+    state.setIsLoading(false);
+  };
   
 
   const askQuestion = async (question: string) => {
@@ -189,15 +176,8 @@ else {
 
     try {
       const aiMessages = state.currentSession.messages.filter((m: Message) => m.sender === "ai");
-//      const interpretation = aiMessages[aiMessages.length - 1]?.content || "";
-//
-//      const { error } = await supabase
-//        .from("dreams")
-//        .update({
-//         status: "completed",
-//          interpretation,
-//        })
-//        .eq("id", state.currentSession.dream.id);
+
+      
    // build full transcript of the entire session
    const transcript = state.currentSession.messages
      .map((m) =>

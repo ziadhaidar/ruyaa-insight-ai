@@ -135,105 +135,50 @@ else {
     }
   };
 
-  // Submit user answer to assistant
-  const submitAnswer = async (answer: string) => {
-    if (!state.currentSession || !state.threadId || !state.user) {
-      toast({
-        title: "Error",
-        description: "No active session. Please start a new dream interpretation.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    state.setIsLoading(true);
-
-    try {
-      const questionNum = state.currentSession.currentQuestion;
-      console.log("Submitting answer for question", questionNum);
-
-      const newUserMessage: Message = {
-        id: uuidv4(),
-        dreamId: state.currentSession.dream.id,
-        content: answer,
-        sender: "user",
-        timestamp: new Date().toISOString(),
-      };
-
-      const updatedMessages = [...state.currentSession.messages, newUserMessage];
-      state.setCurrentSession({
-        ...state.currentSession,
-        messages: updatedMessages,
-      });
-
-      await state.sendMessageToAssistant(state.threadId, answer, state.user.id);
-
-      const nextQuestionNumber = questionNum + 1;
-      const assistantResponse = await state.runAssistantAndGetResponse(state.threadId, nextQuestionNumber);
-      const isInterpretationComplete = nextQuestionNumber > 3;
-
-      const newAIMessage: Message = {
-        id: uuidv4(),
-        dreamId: state.currentSession.dream.id,
-        content: assistantResponse,
-        sender: "ai",
-        timestamp: new Date().toISOString(),
-      };
-
-      state.setCurrentSession({
-        ...state.currentSession,
-        messages: [...updatedMessages, newAIMessage],
-        currentQuestion: nextQuestionNumber,
-        isComplete: isInterpretationComplete,
-      });
-
-      const dreamId = state.currentSession.dream.id;
-
- //     const { error } = await supabase
-//        .from("dreams")
-//        .update({
-//          status: isInterpretationComplete ? "completed" : "interpreting",
-//          ...(isInterpretationComplete && { interpretation: assistantResponse }),
-//        })
-//        .eq("id", dreamId);
-   // build full transcript of the dream + Q/A + final AI message
-   const transcript = state.currentSession.messages
-     .map((m) =>
-       m.sender === "user"
-         ? `You: ${m.content}`
-         : `AI: ${m.content}`
-     )
-     .join("\n\n");
-
-   const { error } = await supabase
-     .from("dreams")
-     .update({
-       status: isInterpretationComplete ? "completed" : "interpreting",
-       ...(isInterpretationComplete && { interpretation: transcript }),
-     })
-     .eq("id", dreamId);
-      
-      if (error) {
-        console.error("Error updating dream status:", error.message);
-      } else {
-        console.log(
-          isInterpretationComplete
-            ? "Dream interpretation completed and saved."
-            : "Dream status updated to 'interpreting'."
-        );
-      }
-    } catch (error: any) {
-      console.error("Error submitting answer:", error.message);
-      toast({
-        title: "Assistant Error",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      state.setIsLoading(false);
-    }
-  };
++  // Submit user answer to assistant
++  const submitAnswer = async (answer: string) => {
++    // 1) set loading
++    state.setIsLoading(true);
++
++    // 2) record user message
++    state.currentSession.messages.push({ sender: "user", content: answer });
++
++    // 3) get AI response
++    const aiResponse = await runAssistantAndGetResponse(answer);
++    state.currentSession.messages.push({ sender: "ai", content: aiResponse });
++
++    // 4) check if we've now answered 3 times
++    const userAnswers = state.currentSession.messages.filter(m => m.sender === "user");
++    const isInterpretationComplete = userAnswers.length >= 3;
++
++    // 5) build full transcript
++    const transcript = state.currentSession.messages
++      .map(m => (m.sender === "user" ? `You: ${m.content}` : `AI: ${m.content}`))
++      .join("\n\n");
++
++    // 6) save status and full conversation
++    const { error } = await supabase
++      .from("dreams")
++      .update({
++        status: isInterpretationComplete ? "completed" : "interpreting",
++        interpretation: transcript,
++      })
++      .eq("id", state.currentSession.dream.id);
++
++    // 7) handle any DB errors
++    if (error) {
++      console.error("Error saving interpretation:", error.message);
++      toast({
++        title: "Error saving interpretation",
++        description: error.message,
++        variant: "destructive",
++      });
++    }
++
++    // 8) unset loading
++    state.setIsLoading(false);
++  };
+  
 
   const askQuestion = async (question: string) => {
     return await submitAnswer(question);

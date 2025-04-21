@@ -16,29 +16,22 @@ export const useOpenAIAssistant = () => {
   const { toast } = useToast();
 
   // Create a new OpenAI thread
-  const createAssistantThread = async (): Promise<string> => {
-    try {
-      setIsLoading(true);
-      const thread = await createThread();
+  const createAssistantThread = async () => {
+  if (threadId) return threadId; // ✅ Return existing threadId if it exists
 
-      if (!thread) {
-        throw new Error("Failed to create OpenAI thread");
-      }
-
-      console.log("Created thread with ID:", thread.id);
-      return thread.id;
-    } catch (error: any) {
-      console.error("Error creating assistant thread:", error);
-      toast({
-        title: "OpenAI Connection Error",
-        description: `Could not establish a connection to the OpenAI service: ${error.message}`,
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  setIsLoading(true);
+  try {
+    const thread = await openai.beta.threads.create();
+    const newThreadId = thread.id;
+    setThreadId(newThreadId);
+    return newThreadId;
+  } catch (error) {
+    console.error("Error creating assistant thread:", error);
+    return null;
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // Add a message to the thread
   const sendMessageToAssistant = async (

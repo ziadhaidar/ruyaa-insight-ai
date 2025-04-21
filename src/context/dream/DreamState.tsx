@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Dream, InterpretationSession, Message } from "@/types";
@@ -9,13 +8,12 @@ export const useDreamState = () => {
   const [currentDream, setCurrentDream] = useState<Dream | null>(null);
   const [currentSession, setCurrentSession] = useState<InterpretationSession | null>(null);
   const [interpretationSession, setInterpretationSession] = useState<InterpretationSession | null>(null);
-  
+  const [threadId, setThreadId] = useState<string | null>(null); // moved here
   const { user } = useAuth();
+  
   const { 
     isLoading, 
     setIsLoading,
-    threadId,
-    setThreadId,
     createAssistantThread,
     sendMessageToAssistant,
     runAssistantAndGetResponse

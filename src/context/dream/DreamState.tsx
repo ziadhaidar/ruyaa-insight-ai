@@ -20,21 +20,25 @@ export const useDreamState = () => {
   } = useOpenAIAssistant();
 
   // Create a new dream session
-  const startNewDreamSession = (dreamText: string) => {
-    if (!user) return;
+  const startNewDreamSession = async (dreamText: string) => {
+  if (!user) return;
 
-    const newDream: Dream = {
-      id: uuidv4(),
-      user_id: user.id,
-      dream_text: dreamText,
-      questions: [],
-      answers: [],
-      created_at: new Date().toISOString(),
-      status: "pending"
-    };
-
-    setCurrentDream(newDream);
+  const newDream: Dream = {
+    id: uuidv4(),
+    user_id: user.id,
+    dream_text: dreamText,
+    questions: [],
+    answers: [],
+    created_at: new Date().toISOString(),
+    status: "pending"
   };
+
+  setCurrentDream(newDream);
+
+  // ✅ Create or reuse thread just once per dream
+  const newThreadId = await createAssistantThread();
+  if (newThreadId) setThreadId(newThreadId);
+};
 
   return {
     currentDream,

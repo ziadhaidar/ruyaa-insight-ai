@@ -35,9 +35,11 @@ export const useDreamState = () => {
 
   setCurrentDream(newDream);
 
-  // ✅ Create or reuse thread just once per dream
-  const newThreadId = await createAssistantThread();
-  if (newThreadId) setThreadId(newThreadId);
+  // Create or reuse a single assistant thread
+  const thread = await createAssistantThread();
+  if (thread) {
+    setThreadId(thread); // Save it for use across all questions
+  }
 };
 
   return {

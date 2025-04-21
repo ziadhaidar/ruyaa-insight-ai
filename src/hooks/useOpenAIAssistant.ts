@@ -17,17 +17,24 @@ export const useOpenAIAssistant = () => {
 
   // Create a new OpenAI thread
   const createAssistantThread = async () => {
-  if (threadId) return threadId; // ✅ Return existing threadId if it exists
+  if (threadId) return threadId; // Return existing threadId if it exists
 
   setIsLoading(true);
   try {
-    const thread = await openai.beta.threads.create();
-    const newThreadId = thread.id;
-    setThreadId(newThreadId);
-    return newThreadId;
+    const thread = await createThread();
+    if (!thread) {
+      throw new Error("Failed to create OpenAI thread");
+    }
+    setThreadId(thread.id);
+    return thread.id;
   } catch (error) {
     console.error("Error creating assistant thread:", error);
-    return null;
+    toast({
+      title: "OpenAI Connection Error",
+      description: `Could not establish a connection to the OpenAI service: ${error.message}`,
+      variant: "destructive"
+    });
+    throw error;
   } finally {
     setIsLoading(false);
   }

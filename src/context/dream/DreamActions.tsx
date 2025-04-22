@@ -178,19 +178,42 @@ export const useDreamActions = (state: any) => {
       });
       
       // Update dream in database
-      if (isInterpretationComplete) {
-        console.log("Interpretation complete, updating dream status to completed");
-        const { error } = await supabase.from('dreams').update({
-          status: "completed",
-          interpretation: assistantResponse
-        }).eq('id', state.currentSession.dream.id);
-        
-        if (error) {
-          console.error("Error updating dream:", error);
-        } else {
-          console.log("Dream updated to completed successfully");
-        }
-      } else {
+if (isInterpretationComplete) {
+  console.log("Interpretation complete, updating dream status to completed");
+
+  const allMessages = [...updatedMessages, newAIMessage];
+
+  const questions = allMessages
+    .filter((msg) => msg.sender === "ai")
+    .map((msg) => msg.content);
+
+  const answers = allMessages
+    .filter((msg) => msg.sender === "user")
+    .map((msg) => msg.content);
+
+  const { error } = await supabase.from("dreams")
+    .update({
+      status: "completed",
+      interpretation: assistantResponse,
+      questions: questions,
+      answers: answers
+    })
+    .eq("id", state.currentSession.dream.id);
+
+  if (error) {
+    console.error("Error updating dream:", error);
+    toast({
+      title: "Database Error",
+      description: "Failed to save final interpretation. Please try again later.",
+      variant: "destructive"
+    });
+  } else {
+    console.log("Dream updated to completed successfully");
+  }
+}
+
+      
+      else {
         // Just update the status if we're still in the questioning phase
         console.log("Still in questioning phase, updating dream status");
         const { error } = await supabase.from('dreams').update({

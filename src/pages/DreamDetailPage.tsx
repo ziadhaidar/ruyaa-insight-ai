@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -99,7 +98,7 @@ const DreamDetailPage: React.FC = () => {
   } else if (dream.status === "interpreting") {
     status = "in progress";
   } else if (dream.status === "completed") {
-    status = "submitted";
+    status = "completed";
   }
 
   return (
@@ -111,8 +110,8 @@ const DreamDetailPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span>Dream from {format(new Date(dream.created_at), "MMMM d, yyyy")}</span>
                 <Badge 
-                  variant={status === "submitted" ? "success" : "outline"} 
-                  className={status === "submitted" ? "bg-green-600" : "bg-amber-500 text-white"}
+                  variant={status === "submitted" || status === "completed" ? "success" : "outline"} 
+                  className={status === "submitted" || status === "completed" ? "bg-green-600" : "bg-amber-500 text-white"}
                 >
                   {status}
                 </Badge>

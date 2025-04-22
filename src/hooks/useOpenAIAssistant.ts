@@ -95,29 +95,47 @@ export const useOpenAIAssistant = () => {
   };
 
   // Run the assistant with specific instructions based on question number
-  const runAssistantWithInstructions = async (threadId: string, questionNumber: number) => {
-    let instructions = "";
-    
-    if (questionNumber === 1) {
-      instructions = "Ask the first follow-up question about the user's dream. Be concise.";
-    } else if (questionNumber === 2) {
-      instructions = "Ask the second follow-up question about the user's dream. Be concise.";
-    } else if (questionNumber === 3) {
-      instructions = "Ask the third and final follow-up question about the user's dream. Be concise.";
-    } else if (questionNumber > 3) {
-      instructions = "Generate a final interpretation with: (1) A detailed explanation, (2) A relevant Quranic verse in Arabic with translation, and (3) A spiritual conclusion.";
-    }
-    
-    console.log(`Running assistant with instructions for question ${questionNumber}: "${instructions}"`);
-    
-    const run = await runAssistant(threadId, instructions);
-    if (!run) {
-      throw new Error("Failed to run assistant");
-    }
-    
-    console.log("Run started with ID:", run.id, "with instructions for question", questionNumber);
-    return run;
-  };
+const runAssistantWithInstructions = async (threadId: string, questionNumber: number) => {
+  let instructions = "";
+
+  if (questionNumber === 1) {
+    instructions = `
+You are an Islamic dream interpreter.
+Do not give any interpretation yet.
+Just ask the first follow-up question to clarify the dream.
+Keep it short and precise.`;
+  } else if (questionNumber === 2) {
+    instructions = `
+You are continuing a dream interpretation.
+Do not give any interpretation yet.
+Ask a second follow-up question, based on previous user response.
+Be short and precise.`;
+  } else if (questionNumber === 3) {
+    instructions = `
+This is the last follow-up question before the interpretation.
+Do not give the interpretation yet.
+Ask a final, very useful follow-up question.
+Short and direct.`;
+  } else if (questionNumber > 3) {
+    instructions = `
+Now that you have three answers, give the final dream interpretation.
+Include:
+- A detailed but concise explanation
+- One relevant Quranic verse (Arabic + English translation)
+- One brief spiritual advice based on the dream.
+Do not ask any further questions.`;
+  }
+
+  console.log(`Running assistant with instructions for question ${questionNumber}:`, instructions);
+
+  const run = await runAssistant(threadId, instructions);
+  if (!run) {
+    throw new Error("Failed to run assistant");
+  }
+
+  console.log("Run started with ID:", run.id);
+  return run;
+};
 
   // Run the assistant and wait for a response
   const runAssistantAndGetResponse = async (threadId: string, questionNumber: number = 1) => {

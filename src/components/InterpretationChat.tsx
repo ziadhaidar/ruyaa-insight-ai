@@ -1,242 +1,192 @@
-
-import React, { useState, useRef, useEffect } from "react";
-import { useDream } from "@/context/DreamContext";
-import { Message } from "@/types";
-import { Button } from "./ui/button";
-import { Textarea } from "./ui/textarea";
-import { Avatar } from "./ui/avatar";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
-import { useAuth } from "@/context/AuthContext";
-import { Badge } from "./ui/badge";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "./ui/alert";
+import React, { useState, useRef, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Send } from "lucide-react";
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import LoadingAnimation from './LoadingAnimation';
+import useOpenAIAssistant from '@/hooks/useOpenAIAssistant';
+import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 
 const InterpretationChat = () => {
-  const { currentSession, askQuestion, submitAnswer, isLoading } = useDream();
+  const { dreamId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const [messageContent, setMessageContent] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const { language } = useLanguage();
+  const { submitMessage, isLoading, messages, createNewThread } = useOpenAIAssistant();
+  const [userInput, setUserInput] = useState('');
+  const [dreamContent, setDreamContent] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [interpretation, setInterpretation] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Scroll to the bottom of the chat on message updates
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [currentSession?.messages]);
-
-  const handleSendMessage = async () => {
-    if (!messageContent.trim() || isLoading) return;
+    const fetchDream = async () => {
+      if (!dreamId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('dreams')
+          .select('*')
+          .eq('id', dreamId)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching dream:', error);
+          return;
+        }
+        
+        if (data) {
+          setDreamContent(data.content);
+          // If there's already an interpretation, set it
+          if (data.interpretation) {
+            setInterpretation(data.interpretation);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching dream:', error);
+      }
+    };
     
-    setError(null);
+    fetchDream();
+  }, [dreamId]);
+
+  useEffect(() => {
+    if (dreamContent && !isInitialized) {
+      initializeChat();
+    }
+  }, [dreamContent]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Extract interpretation from AI responses to save to database
+  useEffect(() => {
+    if (messages.length > 1) {
+      // Find the last AI message that contains an interpretation
+      const aiMessages = messages.filter(msg => msg.role === 'assistant');
+      if (aiMessages.length > 0) {
+        const lastAiMessage = aiMessages[aiMessages.length - 1];
+        setInterpretation(lastAiMessage.content);
+        
+        // Save the interpretation to the database
+        updateDreamInterpretation(lastAiMessage.content);
+      }
+    }
+  }, [messages]);
+
+  const updateDreamInterpretation = async (interpretationText: string) => {
+    if (!dreamId || !interpretationText) return;
     
     try {
-      // Since we're following a strict question-answer protocol,
-      // we'll always use submitAnswer
-      await submitAnswer(messageContent);
-      setMessageContent("");
-    } catch (err) {
-      console.error("Error in chat:", err);
-      setError("Failed to process your message. Please try again.");
-    }
-  };
-
-  // Check if the latest message is the final interpretation
-  const isFinalInterpretation = () => {
-    if (!currentSession) return false;
-    
-    // The final interpretation is when we have completed all 3 questions
-    return currentSession.currentQuestion > 3 &&
-           currentSession.messages[currentSession.messages.length - 1].sender === 'ai';
-  };
-
-  // Check if a message contains a Quranic verse (for styling)
-  const containsQuranVerse = (content: string) => {
-    // This is a simple check - you might want to implement a more sophisticated detection
-    return content.includes('Quran') || content.includes('Qur\'an') || content.includes('verse') || 
-           content.includes('surah') || content.includes('ayah') || 
-           // Add Arabic text detection
-           /[\u0600-\u06FF]/.test(content);
-  };
-
-  // Function to enhance message display
-  const renderMessageContent = (message: Message) => {
-    if (message.sender !== 'ai') {
-      return <p>{message.content}</p>;
-    }
-    
-    // For AI messages, check if it's the final interpretation
-    const isFinal = isFinalInterpretation() && 
-                   currentSession?.messages[currentSession.messages.length - 1].id === message.id;
-    
-    if (isFinal) {
-      // Split the content to find Quranic verses (both Arabic and English translations)
-      const parts = message.content.split(/(\bQuran\b|\bQur'an\b|\bverse\b|\bSurah\b|\bAyah\b|[\u0600-\u06FF]{10,})/i);
+      const { error } = await supabase
+        .from('dreams')
+        .update({ 
+          interpretation: interpretationText,
+          status: 'completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', dreamId);
       
-      return (
-        <div className="space-y-4">
-          {isFinal && <Badge className="mb-2">Final Interpretation</Badge>}
-          {parts.map((part, index) => {
-            // Check if this part likely contains Arabic text (Quranic verse)
-            const containsArabic = /[\u0600-\u06FF]{4,}/.test(part);
-            
-            if (containsArabic || (index > 0 && /(\bQuran\b|\bQur'an\b|\bverse\b|\bSurah\b|\bAyah\b)/i.test(parts[index-1]))) {
-              // This part likely contains a Quranic verse or Arabic text
-              return (
-                <blockquote key={index} className="pl-4 border-l-4 border-primary italic">
-                  {containsArabic && <p className="font-bold text-right my-2 text-lg">{part}</p>}
-                  {!containsArabic && <p>{part}</p>}
-                </blockquote>
-              );
-            }
-            return <p key={index}>{part}</p>;
-          })}
-        </div>
-      );
-    }
-    
-    // For regular AI messages (questions)
-    return <p>{message.content}</p>;
-  };
-
-  // Determine the button text based on the current state
-  const getButtonText = () => {
-    if (!currentSession) return "Send";
-    
-    if (currentSession.currentQuestion <= 3) {
-      return `Answer Question ${currentSession.currentQuestion}`;
-    } else {
-      return "Send";
+      if (error) {
+        console.error('Error updating dream interpretation:', error);
+      } else {
+        console.log('Dream interpretation updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating dream interpretation:', error);
     }
   };
 
-  if (!currentSession) {
-    return (
-      <Card className="max-w-4xl mx-auto">
-        <CardHeader>
-          <CardTitle>Dream Interpretation (AI Assistant)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center items-center py-16">
-            <div className="text-center">
-              <div className="mb-4">
-                <div className="w-12 h-12 mx-auto rounded-full bg-primary/20 flex items-center justify-center">
-                  <AlertCircle className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-              <h3 className="text-lg font-medium mb-2">No Active Session</h3>
-              <p className="text-muted-foreground max-w-md">
-                Please submit a dream from the home page to start an interpretation session.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+  const initializeChat = async () => {
+    await createNewThread();
+    const initialPrompt = `I would like you to interpret my dream in ${language}. Here is the dream: ${dreamContent}`;
+    await submitMessage(initialPrompt);
+    setIsInitialized(true);
+  };
+
+  const handleSendMessage = async () => {
+    if (!userInput.trim()) return;
+    
+    const message = userInput;
+    setUserInput('');
+    await submitMessage(message);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setUserInput(e.target.value);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleFinish = () => {
+    navigate(`/dreams/${dreamId}`);
+  };
+
+  if (!dreamContent) {
+    return <div className="flex justify-center items-center h-64"><LoadingAnimation /></div>;
   }
 
   return (
-    <Card className="max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>Dream Interpretation (AI Assistant)</CardTitle>
-        {currentSession && currentSession.currentQuestion <= 3 && (
-          <div className="text-sm text-muted-foreground mt-1">
-            Question {currentSession.currentQuestion} of 3
+    <div className="flex flex-col h-full max-w-4xl mx-auto">
+      <div className="flex-1 overflow-auto p-4 space-y-4 mb-4 border rounded-md bg-background">
+        {messages.map((message, index) => (
+          <div 
+            key={index} 
+            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div 
+              className={`max-w-[80%] rounded-lg p-3 ${
+                message.role === 'user' 
+                  ? 'bg-primary text-primary-foreground ml-auto' 
+                  : 'bg-muted ml-0'
+              }`}
+            >
+              <p className="whitespace-pre-wrap">{message.content}</p>
+            </div>
+          </div>
+        ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] rounded-lg p-3 bg-muted">
+              <LoadingAnimation />
+            </div>
           </div>
         )}
-      </CardHeader>
-      <CardContent>
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        <div className="space-y-4" style={{ maxHeight: '500px', overflowY: 'auto' }} ref={chatContainerRef}>
-          {currentSession?.messages.map((message: Message) => (
-            <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className="flex items-start space-x-2 max-w-[80%]">
-                {message.sender === 'ai' && (
-                  <Avatar className="w-8 h-8 mt-1">
-                    <img src="/ai_avatar.png" alt="AI Avatar" />
-                  </Avatar>
-                )}
-                <div className={`rounded-lg p-3 text-sm ${
-                  message.sender === 'user' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-secondary text-secondary-foreground'
-                } ${
-                  isFinalInterpretation() && message === currentSession.messages[currentSession.messages.length - 1]
-                    ? 'border-2 border-primary'
-                    : ''
-                }`}>
-                  {renderMessageContent(message)}
-                </div>
-                {message.sender === 'user' && (
-                  <Avatar className="w-8 h-8 mt-1">
-                    {user?.email ? user.email[0].toUpperCase() : 'U'}
-                  </Avatar>
-                )}
-              </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="flex items-center space-x-2">
-                <Avatar className="w-8 h-8">
-                  <img src="/ai_avatar.png" alt="AI Avatar" />
-                </Avatar>
-                <div className="rounded-lg p-3 text-sm bg-secondary text-secondary-foreground">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '600ms' }}></div>
-                    <span className="ml-2">Thinking...</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </CardContent>
-      <CardFooter className="flex-col space-y-4">
-        <div className="w-full flex items-center space-x-4">
-          <Textarea
-            placeholder={currentSession?.currentQuestion <= 3 
-              ? `Type your answer to question ${currentSession?.currentQuestion}...` 
-              : "Type your message here..."}
-            value={messageContent}
-            onChange={(e) => setMessageContent(e.target.value)}
-            className="flex-grow"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            disabled={isLoading || (currentSession && currentSession.isComplete)}
+        <div ref={messagesEndRef} />
+      </div>
+      
+      <div className="sticky bottom-0 bg-background p-2 border-t">
+        <div className="flex space-x-2">
+          <Textarea 
+            value={userInput}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask a question about your dream..."
+            className="min-h-[60px] flex-1"
           />
-          <Button 
-            onClick={handleSendMessage} 
-            disabled={isLoading || !messageContent.trim() || (currentSession && currentSession.isComplete)}
-          >
-            {getButtonText()}
+          <Button onClick={handleSendMessage} disabled={isLoading}>
+            <Send className="h-5 w-5" />
           </Button>
         </div>
-        {currentSession && isFinalInterpretation() && (
-          <div className="w-full p-3 bg-muted rounded-md">
-            <p className="text-sm font-medium">Your dream interpretation is complete!</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              This interpretation includes a relevant Qur'anic verse and spiritual advice based on your dream description
-              and your answers to our questions.
-            </p>
-          </div>
-        )}
-        <p className="text-xs text-muted-foreground w-full text-center">
-          Powered by OpenAI GPT Assistant for Islamic dream interpretation
-        </p>
-      </CardFooter>
-    </Card>
+        <div className="flex justify-end mt-2">
+          <Button onClick={handleFinish} variant="outline">
+            Finish Interpretation
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
 import { Dream, Message, InterpretationSession } from "@/types";
@@ -79,8 +78,8 @@ export const useDreamActions = (state: any) => {
       console.log("Session created with first question");
       
       // Save dream to database - FIX: Don't provide the ID when inserting, let Supabase generate it
-     console.log("Saving dream to database");
-    const { error } = await supabase.from('dreams').insert({
+      console.log("Saving dream to database");
+      const { error } = await supabase.from('dreams').insert({
         user_id: state.user.id,
         dream_text: state.currentDream.dream_text,
         status: "interpreting"
@@ -178,42 +177,39 @@ export const useDreamActions = (state: any) => {
       });
       
       // Update dream in database
-if (isInterpretationComplete) {
-  console.log("Interpretation complete, updating dream status to completed");
+      if (isInterpretationComplete) {
+        console.log("Interpretation complete, updating dream status to completed");
 
-  const allMessages = [...updatedMessages, newAIMessage];
+        const allMessages = [...updatedMessages, newAIMessage];
 
-  const questions = allMessages
-    .filter((msg) => msg.sender === "ai")
-    .map((msg) => msg.content);
+        const questions = allMessages
+          .filter((msg) => msg.sender === "ai")
+          .map((msg) => msg.content);
 
-  const answers = allMessages
-    .filter((msg) => msg.sender === "user")
-    .map((msg) => msg.content);
+        const answers = allMessages
+          .filter((msg) => msg.sender === "user")
+          .map((msg) => msg.content);
 
-  const { error } = await supabase.from("dreams")
-    .update({
-      status: "completed",
-      interpretation: assistantResponse,
-      questions: questions,
-      answers: answers
-    })
-    .eq("id", state.currentSession.dream.id);
+        const { error } = await supabase.from("dreams")
+          .update({
+            status: "completed",
+            interpretation: assistantResponse,
+            questions: questions,
+            answers: answers
+          })
+          .eq("id", state.currentSession.dream.id);
 
-  if (error) {
-    console.error("Error updating dream:", error);
-    toast({
-      title: "Database Error",
-      description: "Failed to save final interpretation. Please try again later.",
-      variant: "destructive"
-    });
-  } else {
-    console.log("Dream updated to completed successfully");
-  }
-}
-
-      
-      else {
+        if (error) {
+          console.error("Error updating dream:", error);
+          toast({
+            title: "Database Error",
+            description: "Failed to save final interpretation. Please try again later.",
+            variant: "destructive"
+          });
+        } else {
+          console.log("Dream updated to completed successfully");
+        }
+      } else {
         // Just update the status if we're still in the questioning phase
         console.log("Still in questioning phase, updating dream status");
         const { error } = await supabase.from('dreams').update({
@@ -227,7 +223,6 @@ if (isInterpretationComplete) {
         }
       }
 
-  
     } catch (error: any) {
       console.error("Error submitting answer:", error);
       toast({
@@ -256,26 +251,27 @@ if (isInterpretationComplete) {
       // Find the last AI message which should be the interpretation
       const aiMessages = state.currentSession.messages.filter((m: Message) => m.sender === "ai");
       const interpretation = aiMessages[aiMessages.length - 1]?.content || "";
-      // 👇 ADD LOGGING BEFORE UPDATE
-    console.log("🚀 Attempting to complete dream interpretation...");
-    console.log("Dream ID:", state.currentSession.dream.id);
-    console.log("Interpretation text:", interpretation);
- const { error } = await supabase.from('dreams').update({
-      status: "completed",
-      interpretation
-    }).eq('id', state.currentSession.dream.id);
+      
+      console.log("🚀 Attempting to complete dream interpretation...");
+      console.log("Dream ID:", state.currentSession.dream.id);
+      console.log("Interpretation text:", interpretation);
 
- if (error) {
-      console.error("🔥 Supabase update error:", error);
-      throw error;
+      const { error } = await supabase.from('dreams').update({
+        status: "completed",
+        interpretation
+      }).eq('id', state.currentSession.dream.id);
+
+      if (error) {
+        console.error("🔥 Supabase update error:", error);
+        throw error;
+      }
+
+      toast({ title: "Interpretation Complete", description: "Your dream interpretation has been saved." });
+    } catch (error: any) {
+      console.error("❌ Error completing dream interpretation:", error);
+      toast({ title: "Error", description: `Couldn't save your dream interpretation: ${error.message}`, variant: "destructive" });
     }
-
-    toast({ title: "Interpretation Complete", description: "Your dream interpretation has been saved." });
-  } catch (error: any) {
-    console.error("❌ Error completing dream interpretation:", error);
-    toast({ title: "Error", description: `Couldn't save your dream interpretation: ${error.message}`, variant: "destructive" });
-  }
-};
+  };
   
   // Send interpretation to email
   const sendToEmail = async (dreamId: string) => {

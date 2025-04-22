@@ -78,25 +78,26 @@ export const useDreamActions = (state: any) => {
       state.setCurrentSession(session);
       console.log("Session created with first question");
       
--      // Save dream to database - FIX: Don't provide the ID when inserting, let Supabase generate it
--     console.log("Saving dream to database");
--    const { error } = await supabase.from('dreams').insert({
--        user_id: state.user.id,
--        dream_text: state.currentDream.dream_text,
--        status: "interpreting"
--      });
-+      // Save dream to database with initialized arrays/fields
-+      console.log("Saving dream to database");
-+      const { data, error } = await supabase.from('dreams').insert({
-+        user_id:       state.user.id,
-+        dream_text:    state.currentDream.dream_text,
-+        status:        "interpreting",
-+        questions:     [],         // initialize empty questions
-+        answers:       [],         // initialize empty answers
-+        interpretation: ""         // initialize empty interpretation
-+      }).select()
+//-      // Save dream to database - FIX: Don't provide the ID when inserting, let Supabase generate it
+//-     console.log("Saving dream to database");
+//-    const { error } = await supabase.from('dreams').insert({
+//-        user_id: state.user.id,
+//-        dream_text: state.currentDream.dream_text,
+//-        status: "interpreting"
+//-      });
+      //START of new code inserted
+      // Save dream to database with initialized arrays/fields
+      console.log("Saving dream to database");
+      const { data, error } = await supabase.from('dreams').insert({
+        user_id:       state.user.id,
+        dream_text:    state.currentDream.dream_text,
+        status:        "interpreting",
+        questions:     [],         // initialize empty questions
+        answers:       [],         // initialize empty answers
+        interpretation: ""         // initialize empty interpretation
+      }).select()
          .single();
-      
+      //END of new code inserted
       if (error) {
         console.error("Error saving dream:", error);
         toast({
@@ -188,62 +189,63 @@ export const useDreamActions = (state: any) => {
         isComplete: isInterpretationComplete
       });
       
--      // Update dream in database
--      if (isInterpretationComplete) {
--        console.log("Interpretation complete, updating dream status to completed");
--        const { error } = await supabase.from('dreams').update({
--          status: "completed",
--          interpretation: assistantResponse
--        }).eq('id', state.currentSession.dream.id);
--        
--        if (error) {
--          console.error("Error updating dream:", error);
--        } else {
--          console.log("Dream updated to completed successfully");
--        }
--      } else {
--        // Just update the status if we're still in the questioning phase
--        console.log("Still in questioning phase, updating dream status");
--        const { error } = await supabase.from('dreams').update({
--          status: "interpreting"
--        }).eq('id', state.currentSession.dream.id);
--        
--        if (error) {
--          console.error("Error updating dream status:", error);
--        } else {
--          console.log("Dream status updated successfully");
--        }
--      }
-+      // Persist full Q/A and update status (and final transcript on completion)
-+      // 1) collect arrays of AI questions and user answers
-+      const questions = state.currentSession.messages
-+        .filter(m => m.sender === "ai")
-+        .map(m => m.content);
-+      const answers = state.currentSession.messages
-+        .filter(m => m.sender === "user")
-+        .map(m => m.content);
-+
-+      // 2) build transcript only when complete
-+      const transcript = isInterpretationComplete
-+        ? state.currentSession.messages
-+            .map(m => (m.sender === "user" ? `You: ${m.content}` : `AI: ${m.content}`))
-+            .join("\n\n")
-+        : undefined;
-+
-+      // 3) update all fields in one call
-+      const { error } = await supabase.from('dreams').update({
-+        status:        isInterpretationComplete ? "completed" : "interpreting",
-+        questions,     // save JSONB array of all AI prompts
-+        answers,       // save JSONB array of all user replies
-+        ...(transcript !== undefined && { interpretation: transcript })
-+      }).eq('id', state.currentSession.dream.id);
-+
-+      if (error) {
-+        console.error("Error updating dream:", error);
-+      } else {
-+        console.log("Dream record updated successfully");
-+      }
-  
+//-      // Update dream in database
+//-      if (isInterpretationComplete) {
+//-        console.log("Interpretation complete, updating dream status to completed");
+//-        const { error } = await supabase.from('dreams').update({
+//-          status: "completed",
+//-          interpretation: assistantResponse
+//-        }).eq('id', state.currentSession.dream.id);
+//-        
+//-        if (error) {
+//-          console.error("Error updating dream:", error);
+//-        } else {
+//-          console.log("Dream updated to completed successfully");
+//-        }
+//-      } else {
+//-        // Just update the status if we're still in the questioning phase
+//-        console.log("Still in questioning phase, updating dream status");
+//-        const { error } = await supabase.from('dreams').update({
+//-          status: "interpreting"
+//-        }).eq('id', state.currentSession.dream.id);
+//-        
+//-        if (error) {
+//-          console.error("Error updating dream status:", error);
+//-        } else {
+//-          console.log("Dream status updated successfully");
+//-        }
+//-      }
+  //START OF NEW CODE INSERTED
+      // Persist full Q/A and update status (and final transcript on completion)
+      // 1) collect arrays of AI questions and user answers
+      const questions = state.currentSession.messages
+        .filter(m => m.sender === "ai")
+        .map(m => m.content);
+      const answers = state.currentSession.messages
+        .filter(m => m.sender === "user")
+        .map(m => m.content);
+
+      // 2) build transcript only when complete
+      const transcript = isInterpretationComplete
+        ? state.currentSession.messages
+            .map(m => (m.sender === "user" ? `You: ${m.content}` : `AI: ${m.content}`))
+            .join("\n\n")
+        : undefined;
+
+      // 3) update all fields in one call
+      const { error } = await supabase.from('dreams').update({
+        status:        isInterpretationComplete ? "completed" : "interpreting",
+        questions,     // save JSONB array of all AI prompts
+        answers,       // save JSONB array of all user replies
+        ...(transcript !== undefined && { interpretation: transcript })
+      }).eq('id', state.currentSession.dream.id);
+
+      if (error) {
+        console.error("Error updating dream:", error);
+      } else {
+        console.log("Dream record updated successfully");
+      }
+  //END OF NEW CODE INSERTED
     } catch (error: any) {
       console.error("Error submitting answer:", error);
       toast({

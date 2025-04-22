@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { useDream } from "@/context/DreamContext";
 import { Message } from "@/types";
@@ -10,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Badge } from "./ui/badge";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
+import { supabase } from "@/utils/supabase"; // Import supabase if not already imported
 
 const InterpretationChat = () => {
   const { currentSession, askQuestion, submitAnswer, isLoading } = useDream();

@@ -181,10 +181,20 @@ export const useDreamActions = (state: any) => {
         timestamp: new Date().toISOString()
       };
       
-      // Update the current session
+//      // Update the current session
+//      state.setCurrentSession({
+//        ...state.currentSession,
+//        messages: [...updatedMessages, newAIMessage],
+//        currentQuestion: nextQuestionNumber,
+//        isComplete: isInterpretationComplete
+//      });
+      // Build a fresh array of *all* messages
+      const allMessages = [...updatedMessages, newAIMessage];
+
+      // Update the current session with the new messages
       state.setCurrentSession({
         ...state.currentSession,
-        messages: [...updatedMessages, newAIMessage],
+        messages: allMessages,
         currentQuestion: nextQuestionNumber,
         isComplete: isInterpretationComplete
       });
@@ -216,25 +226,34 @@ export const useDreamActions = (state: any) => {
 //-        }
 //-      }
   //START OF NEW CODE INSERTED
+//-      // Persist full Q/A and update status (and final transcript on completion)
+//-      // 1) collect arrays of AI questions and user answers
+//-      const questions = state.currentSession.messages
       // Persist full Q/A and update status (and final transcript on completion)
-      // 1) collect arrays of AI questions and user answers
-      const questions = state.currentSession.messages
+      // 1) collect arrays of AI questions and user answers from the fresh array
+      const questions = allMessages      
         .filter(m => m.sender === "ai")
         .map(m => m.content);
-      const answers = state.currentSession.messages
+//      const answers = state.currentSession.messages
+      const answers = allMessages  
         .filter(m => m.sender === "user")
         .map(m => m.content);
 
+//      // 2) build transcript only when complete
+//      const transcript = isInterpretationComplete
+//        ? state.currentSession.messages
       // 2) build transcript only when complete
       const transcript = isInterpretationComplete
-        ? state.currentSession.messages
+        ? allMessages      
             .map(m => (m.sender === "user" ? `You: ${m.content}` : `AI: ${m.content}`))
             .join("\n\n")
         : undefined;
 
+//      // 3) update all fields in one call
+//      const { error } = await supabase.from('dreams').update({
       // 3) update all fields in one call
       const { error } = await supabase.from('dreams').update({
-        status:        isInterpretationComplete ? "completed" : "interpreting",
+      status:        isInterpretationComplete ? "completed" : "interpreting",
         questions,     // save JSONB array of all AI prompts
         answers,       // save JSONB array of all user replies
         ...(transcript !== undefined && { interpretation: transcript })

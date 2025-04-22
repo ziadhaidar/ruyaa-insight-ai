@@ -233,12 +233,28 @@ export const useDreamActions = (state: any) => {
       // Find the last AI message which should be the interpretation
       const aiMessages = state.currentSession.messages.filter((m: Message) => m.sender === "ai");
       const interpretation = aiMessages[aiMessages.length - 1]?.content || "";
+      // 👇 ADD LOGGING BEFORE UPDATE
+    console.log("🚀 Attempting to complete dream interpretation...");
+    console.log("Dream ID:", state.currentSession.dream.id);
+    console.log("Interpretation text:", interpretation);
       
       // Update the dream status and interpretation in the database
       const { error } = await supabase.from('dreams').update({
         status: "completed",
         interpretation: interpretation
       }).eq('id', state.currentSession.dream.id);
+
+// 👇 IMPROVED ERROR LOGGING
+    if (error) {
+      console.error("🔥 Supabase update error:", error);
+      throw error;
+    }
+
+    toast({ title: "Interpretation Complete", description: "Your dream interpretation has been saved." });
+  } catch (error: any) {
+    console.error("❌ Error completing dream interpretation:", error);
+    toast({ title: "Error", description: `Couldn't save your dream interpretation: ${error.message}`, variant: "destructive" });
+  }
       
       if (error) {
         throw error;

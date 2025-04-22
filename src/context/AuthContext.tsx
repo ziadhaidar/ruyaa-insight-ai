@@ -76,24 +76,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log("Profile completion after auth change:", isComplete);
           
           if (event === 'SIGNED_IN') {
-  const currentPath = window.location.pathname;
-  
-  if (currentPath === '/') {
-            console.log("Already on homepage, skipping redirection.");
-            return;
+            if (!isComplete) {
+              console.log("Redirecting to complete profile");
+              navigate('/complete-profile', { replace: true });
+            } else {
+              console.log("Profile is complete, navigating to dreams");
+              navigate('/dreams', { replace: true });
+            }
           }
-
-  if (!isComplete && currentPath !== '/complete-profile') {
-    console.log("Redirecting to complete profile");
-    navigate('/complete-profile', { replace: true });
-  } else if (isComplete && ['/', '/login', '/register', '/auth'].includes(currentPath)) {
-    console.log("Profile is complete and on neutral page, navigating to dreams");
-    navigate('/dreams', { replace: true });
-  } else {
-    console.log("User is on an existing page, no redirection");
-  }
-}
-
         }, 100);
       }
     });

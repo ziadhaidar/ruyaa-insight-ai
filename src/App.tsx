@@ -44,19 +44,13 @@ const ProtectedRoute = ({ children, requireProfile = true }: { children: React.R
         setRedirectPath(null);
         // Save current path to localStorage if it's a valid authenticated route
         // Only save routes we want to restore (not login, register, etc.)
-       const validRoutesToRemember = [
-  '/home',
-  '/dreams',
-  '/settings',
-  '/interpretation',
-  '/payment',
-  '/dreams/:id'
-];
-
-if (user && !isLoading && !redirectPath) {
-  // Only remember paths we want to restore
-  localStorage.setItem('lastRoute', location.pathname + location.search);
-}
+        if (user && 
+            location.pathname !== '/login' && 
+            location.pathname !== '/register' && 
+            location.pathname !== '/auth' &&
+            location.pathname !== '/complete-profile') {
+          localStorage.setItem('lastRoute', location.pathname + location.search);
+        }
       }
       
       // Short delay to ensure everything is updated
@@ -87,23 +81,20 @@ const RouteRestorer = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-
   const hasRestoredRef = useRef(false);
 
   useEffect(() => {
-    // Only restore once per full browser load
-    if (!isLoading && user && !hasRestoredRef.current) {
-      const lastRoute = localStorage.getItem("lastRoute");
+    if (!isLoading && !hasRestoredRef.current && user) {
+      const isDefaultPage = location.pathname === "/" || 
+                            location.pathname === "/home" || 
+                            location.pathname === "/dreams";
 
-      const isRestorable = (
-        location.pathname === "/" ||
-        location.pathname === "/home"
-      );
-
-      // Avoid restoring from /dreams to /dreams again (redundant)
-      if (lastRoute && lastRoute !== location.pathname && isRestorable) {
-        console.log("Restoring last route:", lastRoute);
-        navigate(lastRoute, { replace: true });
+      if (isDefaultPage) {
+        const lastRoute = localStorage.getItem('lastRoute');
+        if (lastRoute && lastRoute !== location.pathname) {
+          console.log("Restoring last route from localStorage:", lastRoute);
+          navigate(lastRoute, { replace: true });
+        }
       }
 
       hasRestoredRef.current = true;

@@ -111,7 +111,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       if (pointsRef.current) {
         // rotate & pulse
        // pointsRef.current.rotation.y = 0.2 * t;
-          const swing = Math.sin(t * 0.5) * (Math.PI / 6);  // 0.5 = speed
+          const swing = Math.sin(t * 0.5) * (Math.PI / 8);  // 0.5 = speed and PI/8 is angle of rotation
         pointsRef.current.rotation.y = swing;
         pointsRef.current.rotation.x = 0.05 * Math.sin(0.5 * t);
         const s = 1 + 0.015 * Math.sin(1.2 * t);

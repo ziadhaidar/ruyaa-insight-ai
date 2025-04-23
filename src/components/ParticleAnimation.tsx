@@ -77,7 +77,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       25,   //initial value was 30
       container.clientWidth / container.clientHeight,
       0.6,  // initial value was 0.1
-      400   // initial value was 1000
+      2000   // initial value was 1000
     );
     camera.position.set(0, 50, 500);
 

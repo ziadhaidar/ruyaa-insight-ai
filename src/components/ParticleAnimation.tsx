@@ -40,7 +40,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-70 w-70',
   className = '',
   modelUrl = '/girlhead/scene.gltf',
-  particleCount = 10000,
+  particleCount = 15000,                   // Number of points to sample
 
   // commentary: Default animation props
   swingSpeed = 0.5,
@@ -48,8 +48,8 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   breathSpeed = 0.5,
   pulseStrength = 1.2,
   zoomSpeed = 0.5,
-  zoomAmp = 100,
-  particleSize = 0.06,
+  zoomAmp = 80,
+  particleSize = 0.03,                  // Particules size
 
   // commentary: Default shading props
   baseColor = '#f2c19e',

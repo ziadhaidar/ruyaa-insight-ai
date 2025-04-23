@@ -40,7 +40,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-100 w-100',
   className = '',
   modelUrl = '/girlhead/scene.gltf',
-  particleCount = 5000,                   // Number of points to sample
+  particleCount = 10000,                   // Number of points to sample
 
   // commentary: Default animation props
   swingSpeed = 0.5,

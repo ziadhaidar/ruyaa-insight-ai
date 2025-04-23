@@ -49,13 +49,13 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   pulseStrength = 1.2,
   zoomSpeed = 0.5,
   zoomAmp = 30,
-  particleSize = 0.03,                  // Particules size
+  particleSize = 0.08,                  // Particules size
 
   // commentary: Default shading props
-  baseColor = '#f2c19e',
-  lightDirection = [0, 0, 0],
-  shadingAmbient = 0.3,
-  shadingDiffuse = 0.7,
+  baseColor = '#ffd8b0',
+  lightDirection = [-5, 10, 0],
+  shadingAmbient = 0.6,
+  shadingDiffuse = 0.3,
 
   // commentary: Default scene light props
   ambientLightColor = '#ffffff',

@@ -74,12 +74,12 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     // commentary: 1) Initialize scene, camera, and renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
-      25,   //initial value was 30
+      30,   //initial value was 30
       container.clientWidth / container.clientHeight,
       0.6,  // initial value was 0.1
       2000   // initial value was 1000
     );
-    camera.position.set(20, 100, 500);
+    camera.position.set(20, 0, 500);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(container.clientWidth, container.clientHeight);

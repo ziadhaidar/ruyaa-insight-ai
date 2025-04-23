@@ -68,7 +68,9 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
         for (let i = 0; i < particleCount; i++) {
           sampler.sample(temp);
-          posArr.set([temp.x, temp.y, -temp.z], i * 3);
+            posArr[i * 3 + 0] =  temp.x;
+            posArr[i * 3 + 1] = -temp.y;  // inverted Y
+            posArr[i * 3 + 2] =  temp.z;
 
           // skin-tone variation
           const v = (Math.random() - 0.5) * 0.05;

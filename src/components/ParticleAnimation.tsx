@@ -59,7 +59,10 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         // sampler
         const mesh = new THREE.Mesh(merged);
         const sampler = new MeshSurfaceSampler(mesh).build();
-
+      // light for shading:
+      const lightDir = new THREE.Vector3(5, 5, 5).normalize();
+      const ambientIntensity = 0.3;   // base light
+      const diffuseIntensity = 0.7;   // directional strength
         // buffers
         const posArr = new Float32Array(particleCount * 3);
         const colArr = new Float32Array(particleCount * 3);

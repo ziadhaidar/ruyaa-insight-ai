@@ -12,10 +12,10 @@ interface ParticleAnimationProps {
 }
 
 const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
-  size = 'h-60 w-60',
+  size = 'h-[300px] w-[300px]',
   className = '',
   modelUrl = '/girlhead/scene.gltf',
-  particleCount = 500000,
+  particleCount = 300000,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();
@@ -26,7 +26,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
     // 1) Scene, camera, renderer
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(80, container.clientWidth / container.clientHeight, 0.1, 1000);
     camera.position.set(0, 0, 4);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });

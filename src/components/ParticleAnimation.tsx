@@ -15,7 +15,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-60 w-60',
   className = '',
   modelUrl = '/girlhead/scene.gltf',
-  particleCount = 30000,
+  particleCount = 15000,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();
@@ -111,6 +111,8 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       if (pointsRef.current) {
         // rotate & pulse
        // pointsRef.current.rotation.y = 0.2 * t;
+          const swing = Math.sin(t * 0.5) * (Math.PI / 6);  // 0.5 = speed
+        pointsRef.current.rotation.y = swing;
         pointsRef.current.rotation.x = 0.05 * Math.sin(0.5 * t);
         const s = 1 + 0.015 * Math.sin(1.2 * t);
         pointsRef.current.scale.set(s, s, s);

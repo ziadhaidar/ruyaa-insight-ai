@@ -79,7 +79,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       0.6,  // initial value was 0.1
       2000   // initial value was 1000
     );
-    camera.position.set(20, 60, 450);
+    camera.position.set(20, 10, 450);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(container.clientWidth, container.clientHeight);

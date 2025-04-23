@@ -76,12 +76,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log("Profile completion after auth change:", isComplete);
           
           if (event === 'SIGNED_IN') {
-            if (!isComplete) {
-              console.log("Redirecting to complete profile");
-              navigate('/complete-profile', { replace: true });
-            } else {
-              console.log("Profile is complete, navigating to dreams");
-              navigate('/dreams', { replace: true });
+            // Only redirect on initial sign-in from login page or root
+            const currentPath = window.location.pathname;
+            if (currentPath === '/' || currentPath === '/login') {
+              if (!isComplete) {
+                console.log("Redirecting to complete profile");
+                navigate('/complete-profile', { replace: true });
+              } else {
+                console.log("Profile is complete, navigating to dreams");
+                navigate('/dreams', { replace: true });
+              }
             }
           }
         }, 100);
@@ -134,7 +138,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email,
         password,
       });
-      
       if (error) throw error;
     } catch (error: any) {
       console.error("Login error:", error);
@@ -157,7 +160,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           redirectTo: `${window.location.origin}`,
         }
       });
-      
       if (error) throw error;
     } catch (error: any) {
       console.error("Google login error:", error);
@@ -182,9 +184,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           },
         }
       });
-      
       if (error) throw error;
-      
       toast({
         title: "Registration successful",
         description: "Please check your email to confirm your account",
@@ -206,7 +206,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
       navigate('/');
     } catch (error: any) {
       console.error("Logout error:", error);

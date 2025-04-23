@@ -116,8 +116,9 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         geometry.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
         geometry.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
 
+        //particules properties (size, transparency, opacity)
         const material = new THREE.PointsMaterial({
-          size: 0.03,
+          size: 0.06,
           vertexColors: true,
           transparent: true,
           opacity: 0.9,

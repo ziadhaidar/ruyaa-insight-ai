@@ -15,7 +15,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-60 w-60',
   className = '',
   modelUrl = '/girlhead/scene.gltf',
-  particleCount = 100000,
+  particleCount = 10000,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();
@@ -27,7 +27,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     // 1) Scene, camera, renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(30, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(0, 0, 400);
+    camera.position.set(0, 0, 300);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
@@ -110,7 +110,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
       if (pointsRef.current) {
         // rotate & pulse
-        pointsRef.current.rotation.y = 0.2 * t;
+       // pointsRef.current.rotation.y = 0.2 * t;
         pointsRef.current.rotation.x = 0.05 * Math.sin(0.5 * t);
         const s = 1 + 0.015 * Math.sin(1.2 * t);
         pointsRef.current.scale.set(s, s, s);

@@ -61,7 +61,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       positions[i * 3 + 2] = randRadius * Math.cos(phi);                   // z
       
       // Use predominantly dark green with sparse gold particles (only ~5% gold)
-      const isGold = Math.random() < 0.05; // Only 5% chance of being gold
+      const isGold = Math.random() < 0.15; // Only 15% chance of being gold
       
       if (isGold) {
         // Gold particles - slightly brighter to stand out

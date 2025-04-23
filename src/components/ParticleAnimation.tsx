@@ -37,7 +37,7 @@ interface ParticleAnimationProps {
 }
 
 const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
-  size = 'h-70 w-70',
+  size = 'h-100 w-100',
   className = '',
   modelUrl = '/girlhead/scene.gltf',
   particleCount = 15000,                   // Number of points to sample
@@ -74,10 +74,10 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     // commentary: 1) Initialize scene, camera, and renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
-      45,   //initial value was 30
+      25,   //initial value was 30
       container.clientWidth / container.clientHeight,
       0.6,  // initial value was 0.1
-      1000
+      400   // initial value was 1000
     );
     camera.position.set(0, 50, 500);
 

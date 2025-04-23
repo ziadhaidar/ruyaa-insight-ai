@@ -48,6 +48,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     loader.load(
       modelUrl,
       (gltf) => {
+        gltf.scene.rotation.x = Math.PI;
         // merge all geometries
         const geoms: THREE.BufferGeometry[] = [];
         gltf.scene.traverse((o) => {

@@ -72,20 +72,44 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         const posArr = new Float32Array(particleCount * 3);
         const colArr = new Float32Array(particleCount * 3);
         const temp = new THREE.Vector3();
+        const tempNorm = new THREE.Vector3();  // ─── add this for normals
         const baseColor = new THREE.Color(0xf2c19e);
 
-        for (let i = 0; i < particleCount; i++) {
-          sampler.sample(temp);
-            posArr[i * 3 + 0] =  temp.x;
-            posArr[i * 3 + 1] = -temp.y;  // inverted Y
-            posArr[i * 3 + 2] =  temp.z;
-
+//        for (let i = 0; i < particleCount; i++) {
+//          sampler.sample(temp);
+//            posArr[i * 3 + 0] =  temp.x;
+//            posArr[i * 3 + 1] = -temp.y;  // inverted Y
+//            posArr[i * 3 + 2] =  temp.z;
+//
           // skin-tone variation
-          const v = (Math.random() - 0.5) * 0.05;
-          const c = baseColor.clone().offsetHSL(0, 0, v);
-          colArr.set([c.r, c.g, c.b], i * 3);
-        }
+ //         const v = (Math.random() - 0.5) * 0.05;
+ //         const c = baseColor.clone().offsetHSL(0, 0, v);
+ //         colArr.set([c.r, c.g, c.b], i * 3);
+ //       }
+   
+        for (let i = 0; i < particleCount; i++) {
+         // sample both position & normal
+         sampler.sample(temp, tempNorm);
 
+         // position (with your Y-flip)
+         posArr[i * 3 + 0] = temp.x;
+         posArr[i * 3 + 1] = -temp.y;
+         posArr[i * 3 + 2] = temp.z;
+
+         // ─── baked-in Lambertian shading ───
+         const ndotl = Math.max(tempNorm.normalize().dot(lightDir), 0);
+         const shade = ambientIntensity + diffuseIntensity * ndotl;
+         const shadedColor = baseColor.clone()
+           .multiplyScalar(shade)
+           .offsetHSL(0, 0, (Math.random() - 0.5) * 0.03);
+
+         colArr.set(
+           [shadedColor.r, shadedColor.g, shadedColor.b],
+           i * 3
+         );
+       }
+
+        
         originalPositions = posArr.slice();
 
         const geometry = new THREE.BufferGeometry();

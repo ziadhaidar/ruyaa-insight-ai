@@ -1,184 +1,148 @@
-
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three-stdlib/loaders/GLTFLoader';
+import { MeshSurfaceSampler } from 'three-stdlib/math/MeshSurfaceSampler';
+import { BufferGeometryUtils } from 'three-stdlib/utils/BufferGeometryUtils';
 
 interface ParticleAnimationProps {
   size?: string;
   className?: string;
+  modelUrl?: string;
+  particleCount?: number;
 }
 
-const ParticleAnimation: React.FC<ParticleAnimationProps> = ({ 
-  size = "h-60 w-60", 
-  className = "" 
+const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
+  size = 'h-60 w-60',
+  className = '',
+  modelUrl = '/girlhead/scene.gltf',
+  particleCount = 10000,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const particlesRef = useRef<THREE.Points | null>(null);
-  
+  const pointsRef = useRef<THREE.Points>();
+
   useEffect(() => {
     if (!containerRef.current) return;
-    
-    // Initialize Three.js scene
     const container = containerRef.current;
+
+    // 1) Scene, camera, renderer
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
-      75, 
-      container.clientWidth / container.clientHeight, 
-      0.1, 
-      1000
-    );
-    
-    const renderer = new THREE.WebGLRenderer({ 
-      antialias: true,
-      alpha: true
-    });
+    const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(0, 0, 4);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
-    
-    // Create particles - increased count for more density
-    const particleCount = 5000;
-    const particles = new THREE.BufferGeometry();
-    const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
-    
-    // Sphere setup with more varied distribution
-    const radius = 2.5;
-    
-    for(let i = 0; i < particleCount; i++) {
-      // Use spherical coordinates for even distribution
-      const phi = Math.acos(-1 + (2 * i) / particleCount);
-      const theta = Math.sqrt(particleCount * Math.PI) * phi;
-      
-      // Add slight randomness for more natural look
-      const randRadius = radius * (0.95 + Math.random() * 0.1);
-      
-      // Convert spherical to cartesian coordinates
-      positions[i * 3] = randRadius * Math.sin(phi) * Math.cos(theta);     // x
-      positions[i * 3 + 1] = randRadius * Math.sin(phi) * Math.sin(theta); // y
-      positions[i * 3 + 2] = randRadius * Math.cos(phi);                   // z
-      
-      // Use predominantly dark green with sparse gold particles (only ~5% gold)
-      const isGold = Math.random() < 0.15; // Only 15% chance of being gold
-      
-      if (isGold) {
-        // Gold particles - slightly brighter to stand out
-        colors[i * 3] = 0.85 + Math.random() * 0.15;     // R
-        colors[i * 3 + 1] = 0.70 + Math.random() * 0.10; // G
-        colors[i * 3 + 2] = 0.20 + Math.random() * 0.10; // B
-      } else {
-        // Dark green particles - with subtle variations
-        colors[i * 3] = 0.03 + Math.random() * 0.04;     // R
-        colors[i * 3 + 1] = 0.30 + Math.random() * 0.08; // G
-        colors[i * 3 + 2] = 0.15 + Math.random() * 0.06; // B
-      }
-    }
-    
-    particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    
-    const particleMaterial = new THREE.PointsMaterial({
-      size: 0.04, // Smaller particles for a more refined look
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.8,
-      blending: THREE.AdditiveBlending
-    });
-    
-    const pointCloud = new THREE.Points(particles, particleMaterial);
-    scene.add(pointCloud);
-    
-    // Position camera
-    camera.position.z = 6;
-    
-    // Animation variables
-    const originalPositions = positions.slice();
-    
-    // Save references
-    sceneRef.current = scene;
-    cameraRef.current = camera;
-    rendererRef.current = renderer;
-    particlesRef.current = pointCloud;
-    
-    // Animation loop
+
+    // 2) Lights for depth
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const pl = new THREE.PointLight(0xffffff, 0.8);
+    pl.position.set(5, 5, 5);
+    scene.add(pl);
+
+    // 3) Load GLTF and sample points
+    const loader = new GLTFLoader();
+    let originalPositions: Float32Array;
+
+    loader.load(
+      modelUrl,
+      (gltf) => {
+        // merge all geometries
+        const geoms: THREE.BufferGeometry[] = [];
+        gltf.scene.traverse((o) => {
+          if ((o as THREE.Mesh).isMesh) geoms.push((o as THREE.Mesh).geometry);
+        });
+        const merged = BufferGeometryUtils.mergeBufferGeometries(geoms, false);
+
+        // sampler
+        const mesh = new THREE.Mesh(merged);
+        const sampler = new MeshSurfaceSampler(mesh).build();
+
+        // buffers
+        const posArr = new Float32Array(particleCount * 3);
+        const colArr = new Float32Array(particleCount * 3);
+        const temp = new THREE.Vector3();
+        const baseColor = new THREE.Color(0xf2c19e);
+
+        for (let i = 0; i < particleCount; i++) {
+          sampler.sample(temp);
+          posArr.set([temp.x, temp.y, temp.z], i * 3);
+
+          // skin-tone variation
+          const v = (Math.random() - 0.5) * 0.05;
+          const c = baseColor.clone().offsetHSL(0, 0, v);
+          colArr.set([c.r, c.g, c.b], i * 3);
+        }
+
+        originalPositions = posArr.slice();
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+
+        const material = new THREE.PointsMaterial({
+          size: 0.03,
+          vertexColors: true,
+          transparent: true,
+          opacity: 0.9,
+          sizeAttenuation: true,
+        });
+
+        const points = new THREE.Points(geometry, material);
+        scene.add(points);
+        pointsRef.current = points;
+      },
+      undefined,
+      (err) => console.error('GLTF load error:', err)
+    );
+
+    // 4) Animation
+    const clock = new THREE.Clock();
     let frameId: number;
-    const animationTime = { value: 0 };
-    
+
     const animate = () => {
       frameId = requestAnimationFrame(animate);
-      animationTime.value += 0.005; // Slower, smoother animation
-      
-      // Rotate the sphere
-      pointCloud.rotation.y = animationTime.value * 0.3;
-      pointCloud.rotation.x = Math.sin(animationTime.value * 0.2) * 0.2;
-      
-      // Gently pulse the sphere
-      const pulseScale = 1 + Math.sin(animationTime.value * 0.7) * 0.03;
-      pointCloud.scale.set(pulseScale, pulseScale, pulseScale);
-      
-      // Add subtle wave-like movement to particles
-      const positionArray = pointCloud.geometry.attributes.position.array as Float32Array;
-      
-      for(let i = 0; i < particleCount; i++) {
-        const idx = i * 3;
-        const originalX = originalPositions[idx];
-        const originalY = originalPositions[idx + 1];
-        const originalZ = originalPositions[idx + 2];
-        
-        // Calculate distance from origin for wave effect
-        const distance = Math.sqrt(
-          originalX * originalX + 
-          originalY * originalY + 
-          originalZ * originalZ
-        );
-        
-        // Wave effect that moves outward
-        const waveFactor = 0.05 * Math.sin(distance * 2 - animationTime.value * 2);
-        
-        // Apply wave with original position
-        positionArray[idx] = originalX * (1 + waveFactor);
-        positionArray[idx + 1] = originalY * (1 + waveFactor);
-        positionArray[idx + 2] = originalZ * (1 + waveFactor);
+      const t = clock.getElapsedTime();
+
+      if (pointsRef.current) {
+        // rotate & pulse
+        pointsRef.current.rotation.y = 0.2 * t;
+        pointsRef.current.rotation.x = 0.05 * Math.sin(0.5 * t);
+        const s = 1 + 0.015 * Math.sin(1.2 * t);
+        pointsRef.current.scale.set(s, s, s);
+
+        // gentle wave
+        const arr = (pointsRef.current.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
+        for (let i = 0; i < arr.length; i += 3) {
+          arr[i + 2] = originalPositions![i + 2] + 0.005 * Math.sin(originalPositions![i] * 3 + t);
+        }
+        pointsRef.current.geometry.attributes.position.needsUpdate = true;
       }
-      
-      // Flag geometry for update
-      pointCloud.geometry.attributes.position.needsUpdate = true;
-      
+
       renderer.render(scene, camera);
     };
-    
     animate();
-    
-    // Handle resize
-    const handleResize = () => {
-      if (!containerRef.current || !cameraRef.current || !rendererRef.current) return;
-      
-      const container = containerRef.current;
-      const camera = cameraRef.current;
-      const renderer = rendererRef.current;
-      
-      camera.aspect = container.clientWidth / container.clientHeight;
+
+    // 5) Resize
+    const onResize = () => {
+      if (!containerRef.current) return;
+      const w = containerRef.current.clientWidth;
+      const h = containerRef.current.clientHeight;
+      camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setSize(w, h);
     };
-    
-    window.addEventListener('resize', handleResize);
-    
-    // Clean up
+    window.addEventListener('resize', onResize);
+
     return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener('resize', handleResize);
-      if (renderer && container) {
-        container.removeChild(renderer.domElement);
-      }
+      cancelAnimationFrame(frameId!);
+      window.removeEventListener('resize', onResize);
+      if (renderer.domElement && container) container.removeChild(renderer.domElement);
     };
-  }, []);
-  
-  return (
-    <div ref={containerRef} className={`${size} ${className}`} />
-  );
+  }, [modelUrl, particleCount]);
+
+  return <div ref={containerRef} className={`relative ${size} ${className}`} />;
 };
 
 export default ParticleAnimation;

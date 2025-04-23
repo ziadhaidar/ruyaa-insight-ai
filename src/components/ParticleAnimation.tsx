@@ -48,7 +48,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   breathSpeed = 0.5,
   pulseStrength = 1.2,
   zoomSpeed = 0.5,
-  zoomAmp = 80,
+  zoomAmp = 20,
   particleSize = 0.03,                  // Particules size
 
   // commentary: Default shading props
@@ -59,10 +59,10 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
   // commentary: Default scene light props
   ambientLightColor = '#ffffff',
-  ambientLightIntensity = 0.6,
+  ambientLightIntensity = 0.8,
   pointLightColor = '#ffffff',
   pointLightIntensity = 0.8,
-  pointLightPosition = [5, 5, 5],
+  pointLightPosition = [5, 5, 500],
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();

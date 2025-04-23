@@ -44,11 +44,11 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
   // commentary: Default animation props
   swingSpeed = 0.5,
-  swingAngle = Math.PI / 8,
+  swingAngle = Math.PI / 10,
   breathSpeed = 0.5,
   pulseStrength = 1.2,
   zoomSpeed = 0.5,
-  zoomAmp = 20,
+  zoomAmp = 30,
   particleSize = 0.03,                  // Particules size
 
   // commentary: Default shading props

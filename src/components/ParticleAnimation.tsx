@@ -116,7 +116,10 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         pointsRef.current.rotation.x = 0.05 * Math.sin(0.5 * t);
         const s = 1 + 0.015 * Math.sin(1.2 * t);
         pointsRef.current.scale.set(s, s, s);
-
+        // ─── move toward/away from camera ───
+        // amplitude = 100 units, speed = 0.5 * t
+        const zAmp = 100;
+        pointsRef.current.position.z = zAmp * Math.sin(t * 0.5);
         // gentle wave
         const arr = (pointsRef.current.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
         for (let i = 0; i < arr.length; i += 3) {

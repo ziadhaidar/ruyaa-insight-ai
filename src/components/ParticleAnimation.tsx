@@ -4,82 +4,79 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshSurfaceSampler } from 'three/examples/jsm/math/MeshSurfaceSampler.js';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-// commentary: Extend props to include shading and lighting customization
 interface ParticleAnimationProps {
-  size?: string;                   // Tailwind classes for container size
-  className?: string;              // Additional CSS classes
-  modelUrl?: string;               // Path to glTF model
-  particleCount?: number;          // Number of points to sample
-
-  // commentary: Animation control props
-  swingSpeed?: number;             // speed of Y-axis oscillation
-  swingAngle?: number;             // max rotation angle around Y
-  breathSpeed?: number;            // speed of breathing rotation on X
-  pulseStrength?: number;          // frequency of breathing scale pulse
-  zoomSpeed?: number;              // speed of Z-axis movement
-  zoomAmp?: number;                // amplitude of Z-axis movement
-
-  // commentary: Visual control prop
-  particleSize?: number;           // size of each particle
-
-  // commentary: Shading props
-  baseColor?: string;              // hex for skin tone base color
-  lightDirection?: [number, number, number]; // direction for baked shading
-  shadingAmbient?: number;         // ambient light for shading
-  shadingDiffuse?: number;         // diffuse light for shading
-
-  // commentary: Scene light props (for optional debugging)
+  size?: string;
+  className?: string;
+  modelUrl?: string;
+  particleCount?: number;
+  swingSpeed?: number;
+  swingAngle?: number;
+  breathSpeed?: number;
+  pulseStrength?: number;
+  zoomSpeed?: number;
+  zoomAmp?: number;
+  particleSize?: number;
+  baseColor?: string;
+  lightDirection?: [number, number, number];
+  shadingAmbient?: number;
+  shadingDiffuse?: number;
   ambientLightColor?: string;
   ambientLightIntensity?: number;
   pointLightColor?: string;
   pointLightIntensity?: number;
   pointLightPosition?: [number, number, number];
+  // commentary: New prop to control wireframe connections
+  neighborCount?: number;  // number of nearest neighbors to connect lines to
+  lineColor?: string;
+  lineOpacity?: number;
 }
 
 const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
-  size = 'h-100 w-100',
+  size = 'h-70 w-70',
   className = '',
   modelUrl = '/girlhead/scene.gltf',
-  particleCount = 10000,                   // Number of points to sample
-
-  // commentary: Default animation props
+  particleCount = 10000,
   swingSpeed = 0.5,
-  swingAngle = Math.PI / 10,
+  swingAngle = Math.PI / 8,
   breathSpeed = 0.5,
   pulseStrength = 1.2,
   zoomSpeed = 0.5,
-  zoomAmp = 30,
-  particleSize = 0.08,                  // Particules size
-
-  // commentary: Default shading props
-  baseColor = '#ffd8b0',
-  lightDirection = [-5, 10, 0],
-  shadingAmbient = 0.6,
-  shadingDiffuse = 0.3,
-
-  // commentary: Default scene light props
+  zoomAmp = 100,
+  particleSize = 0.06,
+  baseColor = '#f2c19e',
+  lightDirection = [5, 5, 5],
+  shadingAmbient = 0.3,
+  shadingDiffuse = 0.7,
   ambientLightColor = '#ffffff',
-  ambientLightIntensity = 0.8,
+  ambientLightIntensity = 0.6,
   pointLightColor = '#ffffff',
   pointLightIntensity = 0.8,
-  pointLightPosition = [20, 50, 500],
+  pointLightPosition = [5, 5, 5],
+  neighborCount = 4,           // connect each particle to 4 nearest neighbors
+  lineColor = '#ffffff',
+  lineOpacity = 0.2,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();
+  const linesRef = useRef<THREE.LineSegments>();
 
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
 
-    // commentary: 1) Initialize scene, camera, and renderer
+    // commentary: Group to hold points and lines so transforms apply equally
+    const group = new THREE.Group();
+
+    // commentary: 1) Scene, camera, renderer
     const scene = new THREE.Scene();
+    scene.add(group);
     const camera = new THREE.PerspectiveCamera(
-      30,   //initial value was 30
+      30,
       container.clientWidth / container.clientHeight,
-      0.6,  // initial value was 0.1
-      2000   // initial value was 1000
+      0.1,
+      1000
     );
-    camera.position.set(20, 10, 450);
+    camera.position.set(0, 50, 500);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
@@ -103,62 +100,77 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     // commentary: 3) Load model and sample points
     const loader = new GLTFLoader();
     let originalPositions: Float32Array;
-
     loader.load(
       modelUrl,
       (gltf) => {
-        // commentary: Flip model orientation
-        gltf.scene.rotation.x = Math.PI;
-
-        // commentary: Merge all geometries
+        gltf.scene.rotation.x = Math.PI; // flip model
         const geoms: THREE.BufferGeometry[] = [];
         gltf.scene.traverse((o) => {
           if ((o as THREE.Mesh).isMesh) geoms.push((o as THREE.Mesh).geometry);
         });
         const merged = BufferGeometryUtils.mergeBufferGeometries(geoms, false);
-
-        // commentary: Create a sampler for the mesh
         const mesh = new THREE.Mesh(merged);
         const sampler = new MeshSurfaceSampler(mesh).build();
 
-        // commentary: Allocate buffers for positions and colors
+        // buffers for points
         const posArr = new Float32Array(particleCount * 3);
         const colArr = new Float32Array(particleCount * 3);
         const tempPos = new THREE.Vector3();
         const tempNorm = new THREE.Vector3();
 
-        // commentary: Sample and shade each point
         for (let i = 0; i < particleCount; i++) {
           sampler.sample(tempPos, tempNorm);
           posArr[i * 3] = tempPos.x;
           posArr[i * 3 + 1] = -tempPos.y;
           posArr[i * 3 + 2] = tempPos.z;
-
           const ndotl = Math.max(tempNorm.normalize().dot(lightDirVec), 0);
           const shade = ambientI + diffuseI * ndotl;
-          const shaded = baseColorObj.clone()
-            .multiplyScalar(shade)
+          const shaded = baseColorObj.clone().multiplyScalar(shade)
             .offsetHSL(0, 0, (Math.random() - 0.5) * 0.03);
           colArr.set([shaded.r, shaded.g, shaded.b], i * 3);
         }
         originalPositions = posArr.slice();
 
-        // commentary: Build geometry & material
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
-
-        const material = new THREE.PointsMaterial({
-          size: particleSize,
-          vertexColors: true,
-          transparent: true,
-          opacity: 0.9,
-          sizeAttenuation: true,
-        });
-
-        const points = new THREE.Points(geometry, material);
-        scene.add(points);
+        // commentary: Create point cloud
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+        geom.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+        const mat = new THREE.PointsMaterial({ size: particleSize, vertexColors: true, transparent: true, opacity: 0.9, sizeAttenuation: true });
+        const points = new THREE.Points(geom, mat);
+        group.add(points);
         pointsRef.current = points;
+
+        // commentary: Build wireframe lines between nearest neighbors
+        const positionsArray = Array.from(posArr);
+        const linePositions: number[] = [];
+        // naive nearest neighbor search (O(n^2)), caution for large counts
+        for (let i = 0; i < particleCount; i++) {
+          const xi = positionsArray[3 * i];
+          const yi = positionsArray[3 * i + 1];
+          const zi = positionsArray[3 * i + 2];
+          // build list of distances
+          const dists: { idx: number; dist: number }[] = [];
+          for (let j = 0; j < particleCount; j++) {
+            if (i === j) continue;
+            const xj = positionsArray[3 * j];
+            const yj = positionsArray[3 * j + 1];
+            const zj = positionsArray[3 * j + 2];
+            const dx = xi - xj, dy = yi - yj, dz = zi - zj;
+            dists.push({ idx: j, dist: dx * dx + dy * dy + dz * dz });
+          }
+          dists.sort((a, b) => a.dist - b.dist);
+          for (let k = 0; k < neighborCount; k++) {
+            const j = dists[k].idx;
+            // line from i to j
+            linePositions.push(xi, yi, zi, positionsArray[3 * j], positionsArray[3 * j + 1], positionsArray[3 * j + 2]);
+          }
+        }
+        const lineGeom = new THREE.BufferGeometry();
+        lineGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(linePositions), 3));
+        const lineMat = new THREE.LineBasicMaterial({ color: lineColor, transparent: true, opacity: lineOpacity });
+        const lines = new THREE.LineSegments(lineGeom, lineMat);
+        group.add(lines);
+        linesRef.current = lines;
       },
       undefined,
       (err) => console.error('GLTF load error:', err)
@@ -170,17 +182,14 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     const animate = () => {
       frameId = requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
-      if (pointsRef.current) {
-        // Y-axis ping-pong rotation
-        pointsRef.current.rotation.y = Math.sin(t * swingSpeed) * swingAngle;
-        // X-axis breathing rotation
-        pointsRef.current.rotation.x = 0.05 * Math.sin(breathSpeed * t);
-        // overall breathing scale pulse
+      if (pointsRef.current && linesRef.current) {
+        // apply same transforms to group
+        group.rotation.y = Math.sin(t * swingSpeed) * swingAngle;
+        group.rotation.x = 0.05 * Math.sin(breathSpeed * t);
         const scalePulse = 1 + 0.015 * Math.sin(pulseStrength * t);
-        pointsRef.current.scale.set(scalePulse, scalePulse, scalePulse);
-        // Z-axis zoom pulse
-        pointsRef.current.position.z = zoomAmp * Math.sin(t * zoomSpeed);
-        // surface wave effect
+        group.scale.set(scalePulse, scalePulse, scalePulse);
+        group.position.z = zoomAmp * Math.sin(t * zoomSpeed);
+        // update surface wave for points
         const arr = (pointsRef.current.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
         for (let i = 0; i < arr.length; i += 3) {
           arr[i + 2] = originalPositions![i + 2] + 0.005 * Math.sin(originalPositions![i] * 3 + t);
@@ -226,6 +235,9 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     pointLightColor,
     pointLightIntensity,
     pointLightPosition,
+    neighborCount,
+    lineColor,
+    lineOpacity,
   ]);
 
   return <div ref={containerRef} className={`relative ${size} ${className}`} />;

@@ -53,7 +53,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
   // commentary: Default shading props
   baseColor = '#f2c19e',
-  lightDirection = [5, 5, 5],
+  lightDirection = [0, 0, 0],
   shadingAmbient = 0.3,
   shadingDiffuse = 0.7,
 
@@ -62,7 +62,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   ambientLightIntensity = 0.8,
   pointLightColor = '#ffffff',
   pointLightIntensity = 0.8,
-  pointLightPosition = [5, 5, 500],
+  pointLightPosition = [20, 50, 500],
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();
@@ -79,7 +79,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       0.6,  // initial value was 0.1
       2000   // initial value was 1000
     );
-    camera.position.set(20, 0, 500);
+    camera.position.set(20, 60, 450);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(container.clientWidth, container.clientHeight);

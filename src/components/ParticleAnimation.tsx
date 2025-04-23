@@ -37,32 +37,32 @@ interface ParticleAnimationProps {
 }
 
 const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
-  size = 'h-70 w-70',
+  size = 'h-80 w-80',
   className = '',
   modelUrl = '/girlhead/scene.gltf',
-  particleCount = 10000,
+  particleCount = 12000,
 
   // Default animation props
   swingSpeed = 0.5,
-  swingAngle = Math.PI / 8,
+  swingAngle = Math.PI / 10,
   breathSpeed = 0.5,
-  pulseStrength = 1.2,
+  pulseStrength = 1.8,
   zoomSpeed = 0.5,
-  zoomAmp = 100,
-  particleSize = 0.06,
+  zoomAmp = 20,
+  particleSize = 0.08,
 
   // Default shading props
-  baseColor = '#f2c19e',
-  lightDirection = [5, 5, 5],
-  shadingAmbient = 0.3,
-  shadingDiffuse = 0.7,
+  baseColor = '#d4af37',
+  lightDirection = [0, 0, 0],
+  shadingAmbient = 0.6,
+  shadingDiffuse = 0.4,
 
   // Default scene light props
   ambientLightColor = '#ffffff',
   ambientLightIntensity = 0.6,
   pointLightColor = '#ffffff',
   pointLightIntensity = 0.8,
-  pointLightPosition = [5, 5, 5],
+  pointLightPosition = [-10, 50, 60],
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();

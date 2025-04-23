@@ -40,7 +40,12 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     const pl = new THREE.PointLight(0xffffff, 0.8);
     pl.position.set(5, 5, 5);
     scene.add(pl);
-
+// ─── 2.1) Bake-in lighting constants ───
+  // (these do nothing until you use them in your sampler loop)
+  const lightDir = new THREE.Vector3(5, 5, 5).normalize();
+  const ambientIntensity = 0.3;   // how much base light every point gets
+  const diffuseIntensity = 0.7;   // extra light from the “sun” direction
+    
     // 3) Load GLTF and sample points
     const loader = new GLTFLoader();
     let originalPositions: Float32Array;

@@ -12,10 +12,10 @@ interface ParticleAnimationProps {
 }
 
 const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
-  size = 'h-60 w-60',
+  size = 'h-70 w-70',
   className = '',
   modelUrl = '/girlhead/scene.gltf',
-  particleCount = 15000,
+  particleCount = 20000,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();

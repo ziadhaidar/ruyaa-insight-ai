@@ -45,8 +45,8 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   particleCount = 2000,          // default sample count (min:1000, max:50000)
 
   // Default animation props
-  swingSpeed = 3,              // speed of the swing (min:0, max:5)
-  swingAngle = Math.PI / 1,    // max angle in radians (~1.8°, min:0, max:π/2)
+  swingSpeed = 0.3,              // speed of the swing (min:0, max:5)
+  swingAngle = Math.PI / 2,    // max angle in radians (~1.8°, min:0, max:π/2)
   breathSpeed = 0.8,             // speed of breathing rotation (min:0, max:5)
   pulseStrength = 1,             // frequency of scale pulse (min:0, max:10)
   zoomSpeed = 0.2,               // speed of zoom in/out (min:0, max:5)

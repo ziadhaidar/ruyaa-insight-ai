@@ -59,8 +59,8 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   shadingAmbient = 1,            // default ambient shading (0–1)
   shadingDiffuse = 0.7,          // default diffuse shading (0–1)
 
-  normalSpeed = 1,               // default normal jitter speed (0–10)
-  normalAmplitude = 0.2,         // default jitter depth (0–1)
+  normalSpeed = 0.5,               // default normal jitter speed (0–10)
+  normalAmplitude = 0.06,         // default jitter depth (0–1)
 
   ambientLightColor = '#ffffff', // helper ambient light color
   ambientLightIntensity = 0.6,   // helper ambient intensity (0–2)

@@ -40,7 +40,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-80 w-80',            // container size
   className = '',
   modelUrl = '/mask/scene.gltf',
-  particleCount = 20000,
+  particleCount = 10000,
 
   // animations
   swingSpeed = 0.5,
@@ -71,7 +71,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     if (!containerRef.current) return;
     const container = containerRef.current;
 
-    // 1) Setup dynamic vars, scene, camera, renderer
+    // 1) Setup scene, camera, renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
       30,
@@ -82,11 +82,9 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     camera.position.set(0, 50, 500);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    // enlarge canvas to 150% so animation can overflow
     const cw = container.clientWidth;
     const ch = container.clientHeight;
-    renderer.setSize(cw * 1.2, ch * 1.2);
-    // position canvas to center overflow
+    renderer.setSize(cw * 1.5, ch * 1.5);
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.top = '-25%';
     renderer.domElement.style.left = '-25%';
@@ -112,12 +110,17 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     loader.load(
       modelUrl,
       (gltf) => {
+        // flip model
         gltf.scene.rotation.x = Math.PI;
+
+        // merge geometries (use new mergeGeometries API)
         const geoms: THREE.BufferGeometry[] = [];
         gltf.scene.traverse(o => {
           if ((o as THREE.Mesh).isMesh) geoms.push((o as THREE.Mesh).geometry);
         });
-        const merged = BufferGeometryUtils.mergeBufferGeometries(geoms, false);
+        // update call to match Three.js naming
+        const merged = BufferGeometryUtils.mergeGeometries(geoms, false);
+
         const mesh = new THREE.Mesh(merged);
         const sampler = new MeshSurfaceSampler(mesh).build();
 
@@ -145,7 +148,8 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         const points = new THREE.Points(geo, mat);
         scene.add(points);
         pointsRef.current = points;
-      }, undefined,
+      },
+      undefined,
       err => console.error('GLTF load error:', err)
     );
 
@@ -175,7 +179,6 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       const h = container.clientHeight;
       camera.aspect = w/h;
       camera.updateProjectionMatrix();
-      // update canvas too
       renderer.setSize(w*1.5, h*1.5);
       renderer.domElement.style.top='-25%'; renderer.domElement.style.left='-25%';
     };
@@ -199,7 +202,6 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     pointLightPosition
   ]);
 
-  // overflow-visible allows the enlarged canvas to spill out of the box
   return (
     <div ref={containerRef} className={`relative overflow-visible ${size} ${className}`} />
   );

@@ -40,7 +40,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-80 w-80',                   // default container size classes
   className = '',
   modelUrl = '/girlhead/scene.gltf',    // default model path
-  particleCount = 30000,                // default number of sampled particles
+  particleCount = 20000,                // default number of sampled particles
 
   // Default animation props
   swingSpeed = 0.5,                    // default swing speed
@@ -52,10 +52,10 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   particleSize = 0.03,                 // default particle size
 
   // Default shading props
-  baseColor = '#58801b',               // dark green base color
-  lightDirection = [0, -50, -500],     // vector pointing from camera to scene center
+  baseColor = '#000000',               // dark green base color
+  lightDirection = [0, 50, 500],     // vector pointing from camera to scene center
   shadingAmbient = 0.8,                // strong ambient base (80%)
-  shadingDiffuse = 0.2,                // low diffuse contribution (20%)
+  shadingDiffuse = 0.7,                // low diffuse contribution (20%)
 
   // Default scene light props
   ambientLightColor = '#ffffff',       // white ambient light

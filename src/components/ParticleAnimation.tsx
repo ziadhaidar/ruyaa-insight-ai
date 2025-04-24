@@ -6,29 +6,29 @@ import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUti
 
 // commentary: Props for visual and animation customization
 interface ParticleAnimationProps {
-  size?: string;                   // Tailwind classes for container size
-  className?: string;              // Additional CSS classes
-  modelUrl?: string;               // Path to glTF model
-  particleCount?: number;          // Number of points to sample
+  size?: string;
+  className?: string;
+  modelUrl?: string;
+  particleCount?: number;
 
   // Animation control props
-  swingSpeed?: number;             // speed of Y-axis oscillation
-  swingAngle?: number;             // base max rotation angle around Y
-  breathSpeed?: number;            // speed of breathing rotation on X
-  pulseStrength?: number;          // base frequency of breathing scale pulse
-  zoomSpeed?: number;              // speed of Z-axis movement
-  zoomAmp?: number;                // base amplitude of Z-axis movement
+  swingSpeed?: number;
+  swingAngle?: number;
+  breathSpeed?: number;
+  pulseStrength?: number;
+  zoomSpeed?: number;
+  zoomAmp?: number;
 
   // Visual control prop
-  particleSize?: number;           // size of each particle
+  particleSize?: number;
 
   // Shading props
-  baseColor?: string;              // hex for skin tone base color
-  lightDirection?: [number, number, number]; // direction for baked shading
-  shadingAmbient?: number;         // ambient light for shading
-  shadingDiffuse?: number;         // diffuse light for shading
+  baseColor?: string;
+  lightDirection?: [number, number, number];
+  shadingAmbient?: number;
+  shadingDiffuse?: number;
 
-  // Scene light props (for optional debugging)
+  // Scene light props
   ambientLightColor?: string;
   ambientLightIntensity?: number;
   pointLightColor?: string;
@@ -43,26 +43,26 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   particleCount = 30000,
 
   // Default animation props
-  swingSpeed = 0.5,                        // range: 0.1 (slow) to 2 (fast)
-  swingAngle = Math.PI / 100,             // base range: 0 (no swing) to PI/2 (90°)
-  breathSpeed = 0.8,                      // range: 0.1 to 2
-  pulseStrength = 3,                      // base range: 0.5 (slow) to 10 (rapid)
-  zoomSpeed = 0.5,                        // range: 0.1 to 2
-  zoomAmp = 20,                           // base range: 0 (none) to 200+
-  particleSize = 0.03,                    // range: 0.01 (tiny) to 1 (large)
+  swingSpeed = 0.5,
+  swingAngle = Math.PI / 100,
+  breathSpeed = 0.8,
+  pulseStrength = 3,
+  zoomSpeed = 0.5,
+  zoomAmp = 20,
+  particleSize = 0.03,
 
   // Default shading props
-  baseColor = '#58801b',                  // any valid CSS hex - color of particles
-  lightDirection = [0, -50, -500],        // direction vector (normalized internally)
-  shadingAmbient = 0.8,                   // range: 0 to 1
-  shadingDiffuse = 0.2,                   // range: 0 to 1
+  baseColor = '#58801b',
+  lightDirection = [0, -50, -500],
+  shadingAmbient = 0.8,
+  shadingDiffuse = 0.2,
 
   // Default scene light props
   ambientLightColor = '#ffffff',
-  ambientLightIntensity = 0.6,            // range: 0 to 1+
-  pointLightColor = '#ffffff',             
-  pointLightIntensity = 0.8,              // range: 0 to 2+
-  pointLightPosition = [-10, 50, 60],     // position in world units
+  ambientLightIntensity = 0.6,
+  pointLightColor = '#ffffff',
+  pointLightIntensity = 0.8,
+  pointLightPosition = [-10, 50, 60],
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();
@@ -71,11 +71,19 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     if (!containerRef.current) return;
     const container = containerRef.current;
 
-    // dynamic variables for unpredictable motion
-    let dynSwingAngle = swingAngle;
-    let dynZoomAmp = zoomAmp;
-    let dynPulseStrength = pulseStrength;
+    // commentary: Dynamic amplitude variables with smooth transitions
+    let dynSwingPrev = swingAngle;
+    let dynSwingTarget = swingAngle;
+    let dynSwing = swingAngle;
+    let dynZoomPrev = zoomAmp;
+    let dynZoomTarget = zoomAmp;
+    let dynZoom = zoomAmp;
+    let dynPulsePrev = pulseStrength;
+    let dynPulseTarget = pulseStrength;
+    let dynPulse = pulseStrength;
     let nextRandomT = 0;
+    let transitionStart = 0;
+    const lerpDur = 1; // seconds for smooth transition
 
     // 1) Initialize scene, camera, and renderer
     const scene = new THREE.Scene();
@@ -93,63 +101,52 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
 
-    // 2) Optional scene lights for debugging (PointsMaterial ignores these)
-    const ambLight = new THREE.AmbientLight(ambientLightColor, ambientLightIntensity);
-    scene.add(ambLight);
+    // 2) Debug lights
+    scene.add(new THREE.AmbientLight(ambientLightColor, ambientLightIntensity));
     const pl = new THREE.PointLight(pointLightColor, pointLightIntensity);
     pl.position.set(...pointLightPosition);
     scene.add(pl);
 
-    // 2.1) Prepare shading constants
+    // 2.1) Shading setup
     const lightDirVec = new THREE.Vector3(...lightDirection).normalize();
     const ambientI = shadingAmbient;
     const diffuseI = shadingDiffuse;
     const baseColorObj = new THREE.Color(baseColor);
 
-    // 3) Load model and sample points
+    // 3) Load & sample
     const loader = new GLTFLoader();
     let originalPositions: Float32Array;
-
     loader.load(
       modelUrl,
       (gltf) => {
-        // Flip model orientation
         gltf.scene.rotation.x = Math.PI;
-
-        // Merge geometries
         const geoms: THREE.BufferGeometry[] = [];
-        gltf.scene.traverse((o) => {
+        gltf.scene.traverse(o => {
           if ((o as THREE.Mesh).isMesh) geoms.push((o as THREE.Mesh).geometry);
         });
         const merged = BufferGeometryUtils.mergeBufferGeometries(geoms, false);
-
-        // Create sampler
         const mesh = new THREE.Mesh(merged);
         const sampler = new MeshSurfaceSampler(mesh).build();
 
-        // Allocate buffers
         const posArr = new Float32Array(particleCount * 3);
         const colArr = new Float32Array(particleCount * 3);
         const tempPos = new THREE.Vector3();
         const tempNorm = new THREE.Vector3();
 
-        // Sample and shade
         for (let i = 0; i < particleCount; i++) {
           sampler.sample(tempPos, tempNorm);
-          posArr[i * 3] = tempPos.x;
-          posArr[i * 3 + 1] = -tempPos.y;
-          posArr[i * 3 + 2] = tempPos.z;
+          posArr[i*3]     = tempPos.x;
+          posArr[i*3 + 1] = -tempPos.y;
+          posArr[i*3 + 2] = tempPos.z;
           const ndotl = Math.max(tempNorm.normalize().dot(lightDirVec), 0);
           const shade = ambientI + diffuseI * ndotl;
           const shaded = baseColorObj.clone()
             .multiplyScalar(shade)
-            .offsetHSL(0, 0, (Math.random() - 0.5) * 0.03);
-          colArr.set([shaded.r, shaded.g, shaded.b], i * 3);
+            .offsetHSL(0, 0, (Math.random()-0.5)*0.03);
+          colArr.set([shaded.r, shaded.g, shaded.b], i*3);
         }
-
         originalPositions = posArr.slice();
 
-        // Build point cloud
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
         geometry.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
@@ -165,33 +162,42 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         pointsRef.current = points;
       },
       undefined,
-      (err) => console.error('GLTF load error:', err)
+      err => console.error('GLTF load error:', err)
     );
 
-    // 4) Animation loop
+    // 4) Animation loop with smooth transitions
     const clock = new THREE.Clock();
     let frameId: number;
     const animate = () => {
       frameId = requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
 
-      // Randomize amplitudes every 3–6s
+      // schedule new random targets every 3–6s
       if (t > nextRandomT) {
-        dynSwingAngle    = Math.random() * swingAngle * 1.5;
-        dynZoomAmp       = Math.random() * zoomAmp * 1.5;
-        dynPulseStrength = Math.random() * pulseStrength * 1.5;
-        nextRandomT = t + 3 + Math.random() * 3;
+        dynSwingPrev   = dynSwing;
+        dynSwingTarget = Math.random() * swingAngle * 1.5;
+        dynZoomPrev    = dynZoom;
+        dynZoomTarget  = Math.random() * zoomAmp * 1.5;
+        dynPulsePrev   = dynPulse;
+        dynPulseTarget = Math.random() * pulseStrength * 1.5;
+        transitionStart = t;
+        nextRandomT = t + 3 + Math.random()*3;
       }
+      // interpolation factor
+      const u = Math.min((t - transitionStart)/lerpDur, 1);
+      dynSwing = THREE.MathUtils.lerp(dynSwingPrev, dynSwingTarget, u);
+      dynZoom  = THREE.MathUtils.lerp(dynZoomPrev, dynZoomTarget, u);
+      dynPulse = THREE.MathUtils.lerp(dynPulsePrev, dynPulseTarget, u);
 
       if (pointsRef.current) {
-        pointsRef.current.rotation.y = Math.sin(t * swingSpeed) * dynSwingAngle;
+        pointsRef.current.rotation.y = Math.sin(t * swingSpeed) * dynSwing;
         pointsRef.current.rotation.x = 0.05 * Math.sin(breathSpeed * t);
-        const scalePulse = 1 + 0.015 * Math.sin(dynPulseStrength * t);
+        const scalePulse = 1 + 0.015 * Math.sin(dynPulse * t);
         pointsRef.current.scale.set(scalePulse, scalePulse, scalePulse);
-        pointsRef.current.position.z = dynZoomAmp * Math.sin(t * zoomSpeed);
+        pointsRef.current.position.z = dynZoom * Math.sin(t * zoomSpeed);
         const arr = (pointsRef.current.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
-        for (let i = 0; i < arr.length; i += 3) {
-          arr[i + 2] = originalPositions![i + 2] + 0.005 * Math.sin(originalPositions![i] * 3 + t);
+        for (let i = 0; i < arr.length; i+=3) {
+          arr[i+2] = originalPositions![i+2] + 0.005 * Math.sin(originalPositions![i]*3 + t);
         }
         pointsRef.current.geometry.attributes.position.needsUpdate = true;
       }
@@ -202,12 +208,11 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
     // 5) Handle resize
     const onResize = () => {
-      if (!containerRef.current) return;
       const w = container.clientWidth;
       const h = container.clientHeight;
-      camera.aspect = w / h;
+      camera.aspect = w/h;
       camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
+      renderer.setSize(w,h);
     };
     window.addEventListener('resize', onResize);
 
@@ -217,24 +222,16 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       if (renderer.domElement && container) container.removeChild(renderer.domElement);
     };
   }, [
-    modelUrl,
-    particleCount,
-    swingSpeed,
-    swingAngle,
-    breathSpeed,
-    pulseStrength,
-    zoomSpeed,
-    zoomAmp,
+    modelUrl, particleCount,
+    swingSpeed, swingAngle,
+    breathSpeed, pulseStrength,
+    zoomSpeed, zoomAmp,
     particleSize,
-    baseColor,
-    lightDirection,
-    shadingAmbient,
-    shadingDiffuse,
-    ambientLightColor,
-    ambientLightIntensity,
-    pointLightColor,
-    pointLightIntensity,
-    pointLightPosition,
+    baseColor, lightDirection,
+    shadingAmbient, shadingDiffuse,
+    ambientLightColor, ambientLightIntensity,
+    pointLightColor, pointLightIntensity,
+    pointLightPosition
   ]);
 
   return <div ref={containerRef} className={`relative ${size} ${className}`} />;

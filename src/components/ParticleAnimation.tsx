@@ -42,7 +42,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   className = '',
   // Model configuration
   modelUrl = '/mask/scene.gltf', // default path under public folder
-  particleCount = 2000,          // default sample count (min:1000, max:50000)
+  particleCount = 3000,          // default sample count (min:1000, max:50000)
 
   // Default animation props
   swingSpeed = 0.3,              // speed of the swing (min:0, max:5)
@@ -50,7 +50,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   breathSpeed = 0.8,             // speed of breathing rotation (min:0, max:5)
   pulseStrength = 1,             // frequency of scale pulse (min:0, max:10)
   zoomSpeed = 0.06,               // speed of zoom in/out (min:0, max:5)
-  zoomAmp = 10,                  // amplitude of zoom (min:0, max:200)
+  zoomAmp = 5,                  // amplitude of zoom (min:0, max:200)
   particleSize = 0.01,           // size of points (min:0.01, max:1)
 
   // Default shading props

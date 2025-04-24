@@ -160,7 +160,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       (err) => console.error('GLTF load error:', err)
     );
 
-    // 4) Animation loop
+    // 4) Animation loop - rotations
     const clock = new THREE.Clock();
     let frameId: number;
     const animate = () => {

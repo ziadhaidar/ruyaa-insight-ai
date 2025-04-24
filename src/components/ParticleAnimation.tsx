@@ -76,7 +76,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     // 1) Setup scene, camera, renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
-      30, // field of view in degrees (min:10, max:120)
+      100, // field of view in degrees (min:10, max:120)
       container.clientWidth / container.clientHeight,
       0.1, // near plane (min:0.01)
       1000 // far plane

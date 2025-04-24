@@ -46,7 +46,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
   // Default animation props
   swingSpeed = 0.3,              // speed of the swing (min:0, max:5)
-  swingAngle = Math.PI / 2,    // max angle in radians (~1.8°, min:0, max:π/2)
+  swingAngle = Math.PI / 6,    // max angle in radians (~1.8°, min:0, max:π/2)
   breathSpeed = 0.8,             // speed of breathing rotation (min:0, max:5)
   pulseStrength = 1,             // frequency of scale pulse (min:0, max:10)
   zoomSpeed = 0.06,               // speed of zoom in/out (min:0, max:5)
@@ -81,7 +81,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       0.1, // near plane (min:0.01)
       1000 // far plane
     );
-    camera.position.set(0, 0, 20); // camera placement
+    camera.position.set(0, 0, 10); // camera placement
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     const cw = container.clientWidth;

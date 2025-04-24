@@ -50,8 +50,8 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   swingAngle = Math.PI / 6,      // default swing angle (~30°, 0–π/2)
   breathSpeed = 0.8,             // default breath speed (0–5)
   pulseStrength = 1,             // default pulse freq (0–10)
-  zoomSpeed = 0.5,               // default zoom speed (0–5)
-  zoomAmp = 3,                   // default zoom amplitude (0–200)
+  zoomSpeed = 0.2,               // default zoom speed (0–5)
+  zoomAmp = 2,                   // default zoom amplitude (0–200)
   particleSize = 0.01,           // default point size (0.01–1)
 
   baseColor = '#444444',         // default particle color (hex)
@@ -59,7 +59,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   shadingAmbient = 1,            // default ambient shading (0–1)
   shadingDiffuse = 0.7,          // default diffuse shading (0–1)
 
-  normalSpeed = 0.5,               // default normal jitter speed (0–10)
+  normalSpeed = 0.2,               // default normal jitter speed (0–10)
   normalAmplitude = 0.06,         // default jitter depth (0–1)
 
   ambientLightColor = '#ffffff', // helper ambient light color
@@ -88,7 +88,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       0.1,                          // near plane (min:0.01)
       1000                          // far plane
     );
-    camera.position.set(0, 0, 4);   // camera placement
+    camera.position.set(0, 0, 3);   // camera placement
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     const cw = container.clientWidth;

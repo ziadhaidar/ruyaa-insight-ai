@@ -49,8 +49,8 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   swingAngle = Math.PI / 2,    // max angle in radians (~1.8°, min:0, max:π/2)
   breathSpeed = 0.8,             // speed of breathing rotation (min:0, max:5)
   pulseStrength = 1,             // frequency of scale pulse (min:0, max:10)
-  zoomSpeed = 0.2,               // speed of zoom in/out (min:0, max:5)
-  zoomAmp = 40,                  // amplitude of zoom (min:0, max:200)
+  zoomSpeed = 0.06,               // speed of zoom in/out (min:0, max:5)
+  zoomAmp = 20,                  // amplitude of zoom (min:0, max:200)
   particleSize = 0.03,           // size of points (min:0.01, max:1)
 
   // Default shading props

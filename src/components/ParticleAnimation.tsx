@@ -43,26 +43,27 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   particleCount = 12000,
 
   // Default animation props
-  swingSpeed = 0.5,
-  swingAngle = Math.PI / 20,
-  breathSpeed = 0.8,
-  pulseStrength = 3,  //initial value was 1.2
-  zoomSpeed = 0.5,
-  zoomAmp = 20,
-  particleSize = 0.1,
+  swingSpeed = 0.5,                        // range: 0.1 (slow) to 2 (fast)
+  swingAngle = Math.PI / 20,               // range: 0 (no swing) to PI/2 (90°)
+  breathSpeed = 0.8,                       // range: 0.1 to 2
+  pulseStrength = 3,                       // range: 0.5 (slow) to 10 (rapid)
+  zoomSpeed = 0.5,                         // range: 0.1 to 2
+  zoomAmp = 20,                            // range: 0 (none) to 200+
+  particleSize = 0.03,                     // range: 0.01 (tiny) to 1 (large)
 
   // Default shading props
-  baseColor = '#58801b',
-  lightDirection = [0, 0, 0],
-  shadingAmbient = 0.8,
-  shadingDiffuse = 0.2,
+  baseColor = '#58801b',                   // any valid CSS hex - color of particles
+  // Set lightDirection so it points from camera (0,50,500) toward origin (0,0,0)
+  lightDirection = [0, -50, -500],         // will normalize internally
+  shadingAmbient = 0.8,                    // range: 0 to 1
+  shadingDiffuse = 0.2,                    // range: 0 to 1
 
   // Default scene light props
   ambientLightColor = '#ffffff',
-  ambientLightIntensity = 0.6,
-  pointLightColor = '#ffffff',
-  pointLightIntensity = 0.8,
-  pointLightPosition = [-10, 50, 60],
+  ambientLightIntensity = 0.6,             // range: 0 to 1+
+  pointLightColor = '#ffffff',             
+  pointLightIntensity = 0.8,               // range: 0 to 2+
+  pointLightPosition = [-10, 50, 60],      // position in world units
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();

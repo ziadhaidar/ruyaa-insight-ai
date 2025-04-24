@@ -40,15 +40,15 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-80 w-80',                   // default container size classes
   className = '',
   modelUrl = '/girlhead/scene.gltf',    // default model path
-  particleCount = 20000,                // default number of sampled particles
+  particleCount = 10000,                // default number of sampled particles
 
   // Default animation props
   swingSpeed = 0.5,                    // default swing speed
   swingAngle = Math.PI / 100,         // default swing angle (~1.8°)
   breathSpeed = 0.8,                   // default breath rotation speed
-  pulseStrength = 3,                   // default pulse frequency
+  pulseStrength = 1,                   // default pulse frequency
   zoomSpeed = 0.5,                     // default zoom speed
-  zoomAmp = 20,                        // default zoom amplitude
+  zoomAmp = 40,                        // default zoom amplitude
   particleSize = 0.03,                 // default particle size
 
   // Default shading props

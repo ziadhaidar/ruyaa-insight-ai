@@ -4,65 +4,67 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'; // GLTF l
 import { MeshSurfaceSampler } from 'three/examples/jsm/math/MeshSurfaceSampler.js'; // mesh sampler
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'; // geometry utils
 
-// Props for visual/animation customization
+// Props for visual/animation customization (with descriptions and ranges)
 interface ParticleAnimationProps {
-  size?: string;                   // Tailwind classes for container size
-  className?: string;              // Extra CSS classes
-  modelUrl?: string;               // Path to .gltf model
-  particleCount?: number;          // Number of surface samples
+  size?: string;                   // Tailwind classes for container size (min: 'h-0 w-0', max: 'h-full w-full')
+  className?: string;              // Additional CSS classes
+  modelUrl?: string;               // URL path to .gltf or .glb model
+  particleCount?: number;          // Number of surface samples (min: 1000, max: 50000)
 
   // Animation props
-  swingSpeed?: number;
-  swingAngle?: number;
-  breathSpeed?: number;
-  pulseStrength?: number;
-  zoomSpeed?: number;
-  zoomAmp?: number;
+  swingSpeed?: number;             // Speed of Y-axis oscillation (min: 0, max: 5)
+  swingAngle?: number;             // Max rotation angle around Y in radians (min: 0, max: Math.PI/2)
+  breathSpeed?: number;            // Speed of breathing rotation on X (min: 0, max: 5)
+  pulseStrength?: number;          // Frequency of scale pulse (min: 0, max: 10)
+  zoomSpeed?: number;              // Speed of Z-axis in/out movement (min: 0, max: 5)
+  zoomAmp?: number;                // Amplitude of Z-axis movement (min: 0, max: 200)
 
   // Visual props
-  particleSize?: number;
+  particleSize?: number;           // Diameter of each point (min: 0.01, max: 1)
 
   // Shading props
-  baseColor?: string;
-  lightDirection?: [number, number, number];
-  shadingAmbient?: number;
-  shadingDiffuse?: number;
+  baseColor?: string;              // CSS hex for base particle color
+  lightDirection?: [number, number, number]; // Light direction vector (normalized internally)
+  shadingAmbient?: number;         // Ambient term for shading (min: 0, max: 1)
+  shadingDiffuse?: number;         // Diffuse term for shading (min: 0, max: 1)
 
   // Debug scene lights
-  ambientLightColor?: string;
-  ambientLightIntensity?: number;
-  pointLightColor?: string;
-  pointLightIntensity?: number;
-  pointLightPosition?: [number, number, number];
+  ambientLightColor?: string;      // CSS color for ambient helper light
+  ambientLightIntensity?: number;  // Intensity of ambient light (min: 0, max: 2)
+  pointLightColor?: string;        // CSS color for point helper light
+  pointLightIntensity?: number;    // Intensity of point light (min: 0, max: 2)
+  pointLightPosition?: [number, number, number]; // Position of point helper light
 }
 
 const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
-  size = 'h-80 w-80',            // container size
+  // Container sizing
+  size = 'h-80 w-80',            // default: moderate box (min: 'h-0 w-0', max: 'h-full w-full')
   className = '',
-  modelUrl = '/mask/scene.gltf',
-  particleCount = 2000,
+  // Model configuration
+  modelUrl = '/mask/scene.gltf', // default path under public folder
+  particleCount = 2000,          // default sample count (min:1000, max:50000)
 
-  // animations
-  swingSpeed = 0.5,
-  swingAngle = Math.PI / 100,
-  breathSpeed = 0.8,
-  pulseStrength = 1,
-  zoomSpeed = 0.5,
-  zoomAmp = 30,
-  particleSize = 0.03,
+  // Default animation props
+  swingSpeed = 3,              // speed of the swing (min:0, max:5)
+  swingAngle = Math.PI / 100,    // max angle in radians (~1.8°, min:0, max:π/2)
+  breathSpeed = 0.8,             // speed of breathing rotation (min:0, max:5)
+  pulseStrength = 1,             // frequency of scale pulse (min:0, max:10)
+  zoomSpeed = 0.5,               // speed of zoom in/out (min:0, max:5)
+  zoomAmp = 30,                  // amplitude of zoom (min:0, max:200)
+  particleSize = 0.03,           // size of points (min:0.01, max:1)
 
-  // shading
-  baseColor = '#000000',
-  lightDirection = [0, 50, 50],
-  shadingAmbient = 0.8,
-  shadingDiffuse = 0.7,
+  // Default shading props
+  baseColor = '#000000',         // base color of particles (any hex)
+  lightDirection = [0, 50, 50],  // light vector (normalized internally)
+  shadingAmbient = 0.8,          // ambient lighting term (min:0, max:1)
+  shadingDiffuse = 0.7,          // diffuse lighting term (min:0, max:1)
 
-  // debug lights
-  ambientLightColor = '#ffffff',
-  ambientLightIntensity = 0.6,
-  pointLightColor = '#ffffff',
-  pointLightIntensity = 0.8,
-  pointLightPosition = [-10, 50, 60],
+  // Debug lights
+  ambientLightColor = '#ffffff', // ambient fill light color
+  ambientLightIntensity = 0.6,   // ambient light intensity (min:0, max:2)
+  pointLightColor = '#ffffff',   // point light color
+  pointLightIntensity = 0.8,     // point light intensity (min:0, max:2)
+  pointLightPosition = [-10, 50, 60], // point light position in scene
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();
@@ -74,17 +76,17 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     // 1) Setup scene, camera, renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
-      30,
+      30, // field of view in degrees (min:10, max:120)
       container.clientWidth / container.clientHeight,
-      0.1,
-      1000
+      0.1, // near plane (min:0.01)
+      1000 // far plane
     );
-    camera.position.set(0, 0, 30);
+    camera.position.set(0, 0, 30); // camera placement
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     const cw = container.clientWidth;
     const ch = container.clientHeight;
-    renderer.setSize(cw * 1.5, ch * 1.5);
+    renderer.setSize(cw * 1.5, ch * 1.5); // enlarge canvas for overflow
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.top = '-25%';
     renderer.domElement.style.left = '-25%';
@@ -98,29 +100,24 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     pl.position.set(...pointLightPosition);
     scene.add(pl);
 
-    // 2.1) shading setup
+    // 2.1) Shading constants
     const lightDirVec = new THREE.Vector3(...lightDirection).normalize();
     const ambientI = shadingAmbient;
     const diffuseI = shadingDiffuse;
     const baseColorObj = new THREE.Color(baseColor);
 
-    // 3) Load + sample
+    // 3) Load model and sample points
     const loader = new GLTFLoader();
     let originalPositions: Float32Array;
     loader.load(
       modelUrl,
       (gltf) => {
-        // flip model
-        gltf.scene.rotation.x = Math.PI;
-
-        // merge geometries (use new mergeGeometries API)
+        gltf.scene.rotation.x = Math.PI; // flip model
         const geoms: THREE.BufferGeometry[] = [];
         gltf.scene.traverse(o => {
           if ((o as THREE.Mesh).isMesh) geoms.push((o as THREE.Mesh).geometry);
         });
-        // update call to match Three.js naming
         const merged = BufferGeometryUtils.mergeGeometries(geoms, false);
-
         const mesh = new THREE.Mesh(merged);
         const sampler = new MeshSurfaceSampler(mesh).build();
 
@@ -153,7 +150,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       err => console.error('GLTF load error:', err)
     );
 
-    // animations
+    // animations loop
     const clock = new THREE.Clock();
     let frameId: number;
     const animate = () => {
@@ -173,7 +170,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     };
     animate();
 
-    // responsive
+    // responsive resizing
     const onResize = () => {
       const w = container.clientWidth;
       const h = container.clientHeight;

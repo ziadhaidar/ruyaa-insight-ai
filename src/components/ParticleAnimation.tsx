@@ -56,7 +56,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   // Default shading props
   baseColor = '#000000',         // base color of particles (any hex)
   lightDirection = [0, 50, 50],  // light vector (normalized internally)
-  shadingAmbient = 0.8,          // ambient lighting term (min:0, max:1)
+  shadingAmbient = 1,          // ambient lighting term (min:0, max:1)
   shadingDiffuse = 0.7,          // diffuse lighting term (min:0, max:1)
 
   // Debug lights

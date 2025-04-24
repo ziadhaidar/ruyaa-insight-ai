@@ -50,8 +50,8 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   breathSpeed = 0.8,             // speed of breathing rotation (min:0, max:5)
   pulseStrength = 1,             // frequency of scale pulse (min:0, max:10)
   zoomSpeed = 0.06,               // speed of zoom in/out (min:0, max:5)
-  zoomAmp = 20,                  // amplitude of zoom (min:0, max:200)
-  particleSize = 0.03,           // size of points (min:0.01, max:1)
+  zoomAmp = 10,                  // amplitude of zoom (min:0, max:200)
+  particleSize = 0.01,           // size of points (min:0.01, max:1)
 
   // Default shading props
   baseColor = '#000000',         // base color of particles (any hex)

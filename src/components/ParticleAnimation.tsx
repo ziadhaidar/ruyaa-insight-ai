@@ -39,7 +39,7 @@ interface ParticleAnimationProps {
 const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-80 w-80',            // container size
   className = '',
-  modelUrl = '/girlhead/scene.gltf',
+  modelUrl = '/girlhead/mask.gltf',
   particleCount = 20000,
 
   // animations

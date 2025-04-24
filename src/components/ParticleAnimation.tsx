@@ -49,12 +49,12 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   swingAngle = Math.PI / 6,    // max angle in radians (~1.8°, min:0, max:π/2)
   breathSpeed = 0.8,             // speed of breathing rotation (min:0, max:5)
   pulseStrength = 1,             // frequency of scale pulse (min:0, max:10)
-  zoomSpeed = 0.06,               // speed of zoom in/out (min:0, max:5)
+  zoomSpeed = 0.6,               // speed of zoom in/out (min:0, max:5)
   zoomAmp = 5,                  // amplitude of zoom (min:0, max:200)
   particleSize = 0.01,           // size of points (min:0.01, max:1)
 
   // Default shading props
-  baseColor = '#000000',         // base color of particles (any hex)
+  baseColor = '#FFD700',         // base color of particles (any hex)
   lightDirection = [0, 50, 50],  // light vector (normalized internally)
   shadingAmbient = 1,          // ambient lighting term (min:0, max:1)
   shadingDiffuse = 0.7,          // diffuse lighting term (min:0, max:1)
@@ -81,7 +81,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       0.1, // near plane (min:0.01)
       1000 // far plane
     );
-    camera.position.set(0, 0, 10); // camera placement
+    camera.position.set(0, 0, 7); // camera placement
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     const cw = container.clientWidth;

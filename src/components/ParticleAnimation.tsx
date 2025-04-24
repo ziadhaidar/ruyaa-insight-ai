@@ -40,7 +40,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-80 w-80',            // container size
   className = '',
   modelUrl = '/mask/scene.gltf',
-  particleCount = 5000,
+  particleCount = 2000,
 
   // animations
   swingSpeed = 0.5,
@@ -48,7 +48,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   breathSpeed = 0.8,
   pulseStrength = 1,
   zoomSpeed = 0.5,
-  zoomAmp = 40,
+  zoomAmp = 30,
   particleSize = 0.03,
 
   // shading
@@ -79,7 +79,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       0.1,
       1000
     );
-    camera.position.set(0, 0, 60);
+    camera.position.set(0, 0, 30);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     const cw = container.clientWidth;

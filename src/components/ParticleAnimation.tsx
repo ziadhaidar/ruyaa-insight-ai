@@ -40,7 +40,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-80 w-80',            // container size
   className = '',
   modelUrl = '/girlhead/scene.gltf',
-  particleCount = 10000,
+  particleCount = 20000,
 
   // animations
   swingSpeed = 0.5,
@@ -85,7 +85,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     // enlarge canvas to 150% so animation can overflow
     const cw = container.clientWidth;
     const ch = container.clientHeight;
-    renderer.setSize(cw * 1.5, ch * 1.5);
+    renderer.setSize(cw * 1.2, ch * 1.2);
     // position canvas to center overflow
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.top = '-25%';

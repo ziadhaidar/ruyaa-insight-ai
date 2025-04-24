@@ -81,7 +81,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       0.1, // near plane (min:0.01)
       1000 // far plane
     );
-    camera.position.set(0, 0, 30); // camera placement
+    camera.position.set(0, 0, 20); // camera placement
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     const cw = container.clientWidth;

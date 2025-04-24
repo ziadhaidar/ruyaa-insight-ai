@@ -185,11 +185,11 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       // trigger new random targets every 3–6s
       if (t > nextRandomT) {
         dynSwingPrev   = dynSwing;
-        dynSwingTarget = Math.random() * swingAngle * 1.5;
+        dynSwingTarget = Math.random() * swingAngle * 3;
         dynZoomPrev    = dynZoom;
         dynZoomTarget  = Math.random() * zoomAmp * 1.5;
         dynPulsePrev   = dynPulse;
-        dynPulseTarget = Math.random() * pulseStrength * 1.5;
+        dynPulseTarget = Math.random() * pulseStrength * 0.5;
         transitionStart = t;
         nextRandomT = t + 3 + Math.random()*3;
       }

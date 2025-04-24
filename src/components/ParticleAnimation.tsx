@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshSurfaceSampler } from 'three/examples/jsm/math/MeshSurfaceSampler.js';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-// commentary: Props for visual and animation customization
+// commentary: Props for visual and animation customization, including overlay
 interface ParticleAnimationProps {
   size?: string;                   // Tailwind classes for container size
   className?: string;              // Additional CSS classes
@@ -27,6 +27,10 @@ interface ParticleAnimationProps {
   lightDirection?: [number, number, number]; // direction for baked shading
   shadingAmbient?: number;         // ambient light for shading
   shadingDiffuse?: number;         // diffuse light for shading
+
+  // Overlay layer props
+  overlayColor?: string;           // color of solid overlay mesh
+  overlayOpacity?: number;         // opacity of overlay mesh
 
   // Scene light props (for optional debugging)
   ambientLightColor?: string;
@@ -57,6 +61,10 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   shadingAmbient = 0.6,
   shadingDiffuse = 0.4,
 
+  // Overlay defaults
+  overlayColor = '#cccccc',
+  overlayOpacity = 0.5,
+
   // Default scene light props
   ambientLightColor = '#ffffff',
   ambientLightIntensity = 0.6,
@@ -66,6 +74,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();
+  const overlayRef = useRef<THREE.Mesh>();
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -100,9 +109,10 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     const diffuseI = shadingDiffuse;
     const baseColorObj = new THREE.Color(baseColor);
 
-    // 3) Load model and sample points
+    // 3) Load model and sample points, plus overlay creation
     const loader = new GLTFLoader();
     let originalPositions: Float32Array;
+
     loader.load(
       modelUrl,
       (gltf) => {
@@ -116,9 +126,25 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         });
         const merged = BufferGeometryUtils.mergeBufferGeometries(geoms, false);
 
-        // Create sampler
-        const mesh = new THREE.Mesh(merged);
-        const sampler = new MeshSurfaceSampler(mesh).build();
+        // COMMENTARY: Create overlay clone of the original scene for exact mesh overlay
+const overlayModel = gltf.scene.clone();
+const overlayMat = new THREE.MeshBasicMaterial({
+  color: overlayColor,
+  transparent: true,
+  opacity: overlayOpacity,
+  side: THREE.DoubleSide,
+});
+overlayModel.traverse((obj) => {
+  if ((obj as THREE.Mesh).isMesh) {
+    (obj as THREE.Mesh).material = overlayMat;
+  }
+});
+scene.add(overlayModel);
+overlayRef.current = overlayModel;
+
+// Merge geometries for particle sampling
+const mesh = new THREE.Mesh(merged);
+const sampler = new MeshSurfaceSampler(mesh).build();
 
         // Allocate buffers
         const posArr = new Float32Array(particleCount * 3);
@@ -160,12 +186,26 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       (err) => console.error('GLTF load error:', err)
     );
 
-    // 4) Animation loop - rotations
+    // 4) Animation loop applies to both overlay and points
     const clock = new THREE.Clock();
     let frameId: number;
     const animate = () => {
       frameId = requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
+
+      // apply transforms to overlay
+      if (overlayRef.current) {
+        overlayRef.current.rotation.y = Math.sin(t * swingSpeed) * swingAngle;
+        overlayRef.current.rotation.x = 0.05 * Math.sin(breathSpeed * t);
+        overlayRef.current.scale.set(
+          1 + 0.015 * Math.sin(pulseStrength * t),
+          1 + 0.015 * Math.sin(pulseStrength * t),
+          1 + 0.015 * Math.sin(pulseStrength * t)
+        );
+        overlayRef.current.position.z = zoomAmp * Math.sin(t * zoomSpeed);
+      }
+
+      // apply transforms to particles
       if (pointsRef.current) {
         pointsRef.current.rotation.y = Math.sin(t * swingSpeed) * swingAngle;
         pointsRef.current.rotation.x = 0.05 * Math.sin(breathSpeed * t);
@@ -178,6 +218,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         }
         pointsRef.current.geometry.attributes.position.needsUpdate = true;
       }
+
       renderer.render(scene, camera);
     };
     animate();
@@ -212,6 +253,8 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     lightDirection,
     shadingAmbient,
     shadingDiffuse,
+    overlayColor,
+    overlayOpacity,
     ambientLightColor,
     ambientLightIntensity,
     pointLightColor,
@@ -219,7 +262,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     pointLightPosition,
   ]);
 
-  return <div ref={containerRef} className={relative ${size} ${className}} />;
+  return <div ref={containerRef} className={`relative ${size} ${className}`} />;
 };
 
 export default ParticleAnimation;

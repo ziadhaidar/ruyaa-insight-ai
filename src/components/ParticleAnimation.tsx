@@ -13,11 +13,11 @@ interface ParticleAnimationProps {
 
   // Animation control props
   swingSpeed?: number;             // speed of Y-axis oscillation
-  swingAngle?: number;             // max rotation angle around Y
+  swingAngle?: number;             // base max rotation angle around Y
   breathSpeed?: number;            // speed of breathing rotation on X
-  pulseStrength?: number;          // frequency of breathing scale pulse
+  pulseStrength?: number;          // base frequency of breathing scale pulse
   zoomSpeed?: number;              // speed of Z-axis movement
-  zoomAmp?: number;                // amplitude of Z-axis movement
+  zoomAmp?: number;                // base amplitude of Z-axis movement
 
   // Visual control prop
   particleSize?: number;           // size of each particle
@@ -44,26 +44,25 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
   // Default animation props
   swingSpeed = 0.5,                        // range: 0.1 (slow) to 2 (fast)
-  swingAngle = Math.PI / 100,               // range: 0 (no swing) to PI/2 (90°)
-  breathSpeed = 0.8,                       // range: 0.1 to 2
-  pulseStrength = 3,                       // range: 0.5 (slow) to 10 (rapid)
-  zoomSpeed = 0.5,                         // range: 0.1 to 2
-  zoomAmp = 20,                            // range: 0 (none) to 200+
-  particleSize = 0.03,                     // range: 0.01 (tiny) to 1 (large)
+  swingAngle = Math.PI / 100,             // base range: 0 (no swing) to PI/2 (90°)
+  breathSpeed = 0.8,                      // range: 0.1 to 2
+  pulseStrength = 3,                      // base range: 0.5 (slow) to 10 (rapid)
+  zoomSpeed = 0.5,                        // range: 0.1 to 2
+  zoomAmp = 20,                           // base range: 0 (none) to 200+
+  particleSize = 0.03,                    // range: 0.01 (tiny) to 1 (large)
 
   // Default shading props
-  baseColor = '#58801b',                   // any valid CSS hex - color of particles
-  // Set lightDirection so it points from camera (0,50,500) toward origin (0,0,0)
-  lightDirection = [0, -50, -500],         // will normalize internally
-  shadingAmbient = 0.8,                    // range: 0 to 1
-  shadingDiffuse = 0.2,                    // range: 0 to 1
+  baseColor = '#58801b',                  // any valid CSS hex - color of particles
+  lightDirection = [0, -50, -500],        // direction vector (normalized internally)
+  shadingAmbient = 0.8,                   // range: 0 to 1
+  shadingDiffuse = 0.2,                   // range: 0 to 1
 
   // Default scene light props
   ambientLightColor = '#ffffff',
-  ambientLightIntensity = 0.6,             // range: 0 to 1+
+  ambientLightIntensity = 0.6,            // range: 0 to 1+
   pointLightColor = '#ffffff',             
-  pointLightIntensity = 0.8,               // range: 0 to 2+
-  pointLightPosition = [-10, 50, 60],      // position in world units
+  pointLightIntensity = 0.8,              // range: 0 to 2+
+  pointLightPosition = [-10, 50, 60],     // position in world units
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pointsRef = useRef<THREE.Points>();
@@ -71,6 +70,12 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
+
+    // dynamic variables for unpredictable motion
+    let dynSwingAngle = swingAngle;
+    let dynZoomAmp = zoomAmp;
+    let dynPulseStrength = pulseStrength;
+    let nextRandomT = 0;
 
     // 1) Initialize scene, camera, and renderer
     const scene = new THREE.Scene();
@@ -169,18 +174,28 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     const animate = () => {
       frameId = requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
+
+      // Randomize amplitudes every 3–6s
+      if (t > nextRandomT) {
+        dynSwingAngle    = Math.random() * swingAngle * 1.5;
+        dynZoomAmp       = Math.random() * zoomAmp * 1.5;
+        dynPulseStrength = Math.random() * pulseStrength * 1.5;
+        nextRandomT = t + 3 + Math.random() * 3;
+      }
+
       if (pointsRef.current) {
-        pointsRef.current.rotation.y = Math.sin(t * swingSpeed) * swingAngle;
+        pointsRef.current.rotation.y = Math.sin(t * swingSpeed) * dynSwingAngle;
         pointsRef.current.rotation.x = 0.05 * Math.sin(breathSpeed * t);
-        const scalePulse = 1 + 0.015 * Math.sin(pulseStrength * t);
+        const scalePulse = 1 + 0.015 * Math.sin(dynPulseStrength * t);
         pointsRef.current.scale.set(scalePulse, scalePulse, scalePulse);
-        pointsRef.current.position.z = zoomAmp * Math.sin(t * zoomSpeed);
+        pointsRef.current.position.z = dynZoomAmp * Math.sin(t * zoomSpeed);
         const arr = (pointsRef.current.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
         for (let i = 0; i < arr.length; i += 3) {
           arr[i + 2] = originalPositions![i + 2] + 0.005 * Math.sin(originalPositions![i] * 3 + t);
         }
         pointsRef.current.geometry.attributes.position.needsUpdate = true;
       }
+
       renderer.render(scene, camera);
     };
     animate();

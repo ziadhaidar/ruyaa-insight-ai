@@ -40,7 +40,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-80 w-80',            // container size
   className = '',
   modelUrl = '/mask/scene.gltf',
-  particleCount = 10000,
+  particleCount = 5000,
 
   // animations
   swingSpeed = 0.5,
@@ -53,7 +53,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
   // shading
   baseColor = '#000000',
-  lightDirection = [0, 50, 500],
+  lightDirection = [0, 50, 50],
   shadingAmbient = 0.8,
   shadingDiffuse = 0.7,
 
@@ -79,7 +79,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       0.1,
       1000
     );
-    camera.position.set(0, 0, 100);
+    camera.position.set(0, 0, 60);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     const cw = container.clientWidth;
@@ -132,7 +132,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         for (let i = 0; i < particleCount; i++) {
           sampler.sample(tmp, nrm);
           posArr[i*3] = tmp.x;
-          posArr[i*3+1] = -tmp.y;
+          posArr[i*3+1] = tmp.y;
           posArr[i*3+2] = tmp.z;
           const d = Math.max(nrm.normalize().dot(lightDirVec), 0);
           const shade = ambientI + diffuseI * d;

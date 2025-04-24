@@ -187,11 +187,11 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         dynSwingPrev   = dynSwing;
         dynSwingTarget = Math.random() * swingAngle * 3;
         dynZoomPrev    = dynZoom;
-        dynZoomTarget  = Math.random() * zoomAmp * 1.5;
+        dynZoomTarget  = Math.random() * zoomAmp * 1;
         dynPulsePrev   = dynPulse;
         dynPulseTarget = Math.random() * pulseStrength * 0.5;
         transitionStart = t;
-        nextRandomT = t + 3 + Math.random()*3;
+        nextRandomT = t + 5 + Math.random()*3;
       }
       // interpolation factor for smoothing
       const u = Math.min((t - transitionStart)/lerpDur, 1);

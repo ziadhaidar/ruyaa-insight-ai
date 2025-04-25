@@ -23,7 +23,6 @@ interface ParticleAnimationProps {
   particleSize?: number;           // Diameter of each particle (min:0.01, max:1)
 
   // Shading
-  baseColor?: string;              // Base particle color (CSS hex)
   lightDirection?: [number, number, number]; // Light dir vector, normalized internally
   shadingAmbient?: number;         // Ambient shading term (min:0, max:1)
   shadingDiffuse?: number;         // Diffuse shading term (min:0, max:1)
@@ -41,59 +40,56 @@ interface ParticleAnimationProps {
 }
 
 const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
-  size = 'h-80 w-80',            // default: moderate container (min-small, max-full)
-  className = '',                // default: no extra CSS
-  modelUrl = '/mask/scene.gltf', // default model path in public folder
-  particleCount = 4000,          // default samples (~3k) (1000–50000)
+  size = 'h-80 w-80',
+  className = '',
+  modelUrl = '/mask/scene.gltf',
+  particleCount = 3500,
 
-  swingSpeed = 0.3,              // default swing speed (0–5)
-  swingAngle = Math.PI / 6,      // default swing angle (~30°, 0–π/2)
-  breathSpeed = 0.8,             // default breath speed (0–5)
-  pulseStrength = 1,             // default pulse freq (0–10)
-  zoomSpeed = 0.2,               // default zoom speed (0–5)
-  zoomAmp = 0.4,                 // default zoom amplitude (0–200)
-  particleSize = 0.01,           // default point size (0.01–1)
+  swingSpeed = 0.3,
+  swingAngle = Math.PI / 6,
+  breathSpeed = 0.8,
+  pulseStrength = 1,
+  zoomSpeed = 0.2,
+  zoomAmp = 0.6,
+  particleSize = 0.01,
 
-  baseColor = '#444444',         // default particle color (hex)
-  lightDirection = [0, 50, 50],  // default light dom vector (normalized)
-  shadingAmbient = 1,            // default ambient shading (0–1)
-  shadingDiffuse = 0.7,          // default diffuse shading (0–1)
+  lightDirection = [0, 50, 50],
+  shadingAmbient = 1,
+  shadingDiffuse = 0.7,
 
-  normalSpeed = 0,               // default normal jitter speed (0–10)
-  normalAmplitude = 0,         // default jitter depth (0–1)
+  normalSpeed = 0,
+  normalAmplitude = 0,
 
-  ambientLightColor = '#ffffff', // helper ambient light color
-  ambientLightIntensity = 0.6,   // helper ambient intensity (0–2)
-  pointLightColor = '#ffffff',   // helper point light color
-  pointLightIntensity = 0.8,     // helper point intensity (0–2)
-  pointLightPosition = [-10, 50, 60], // helper point light position
+  ambientLightColor = '#ffffff',
+  ambientLightIntensity = 0.6,
+  pointLightColor = '#ffffff',
+  pointLightIntensity = 0.8,
+  pointLightPosition = [-10, 50, 60],
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null); // container div ref
-  const pointsRef = useRef<THREE.Points>();          // Points mesh ref
+  const containerRef = useRef<HTMLDivElement>(null);
+  const pointsRef = useRef<THREE.Points>();
 
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
 
-    // Buffers for base positions, normals, and phase offsets
     let basePositions: Float32Array;
     let baseNormals: Float32Array;
     let normalPhases: Float32Array;
 
-    // 1) Scene, camera, renderer setup
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
-      120,                          // FOV (deg) (min:10, max:120)
-      container.clientWidth / container.clientHeight, // aspect
-      0.1,                          // near plane (min:0.01)
-      1000                          // far plane
+      120,
+      container.clientWidth / container.clientHeight,
+      0.1,
+      1000
     );
-    camera.position.set(0, 0, 1.3);   // camera placement
+    camera.position.set(0, 0, 1.3);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     const cw = container.clientWidth;
     const ch = container.clientHeight;
-    renderer.setSize(cw * 1.5, ch * 1.5); // 150% for overflow
+    renderer.setSize(cw * 1.5, ch * 1.5);
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.top = '-25%';
     renderer.domElement.style.left = '-25%';
@@ -101,31 +97,50 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
 
-    // 2) Debug lights
     scene.add(new THREE.AmbientLight(ambientLightColor, ambientLightIntensity));
     const pl = new THREE.PointLight(pointLightColor, pointLightIntensity);
     pl.position.set(...pointLightPosition);
     scene.add(pl);
 
-    // 2.1) Shading constants
     const lightDirVec = new THREE.Vector3(...lightDirection).normalize();
     const ambientI = shadingAmbient;
     const diffuseI = shadingDiffuse;
-    const baseColorObj = new THREE.Color(baseColor);
 
-    // 3) Load model & sample points
+    // Define color palettes and percentages
+    const colorCandidates = [
+      { color: new THREE.Color('#000000'), weight: 0.6 }, // black 60%
+      { color: new THREE.Color('#00ff00'), weight: 0.3 }, // green 30%
+      { color: new THREE.Color('#FFD700'), weight: 0.1 }  // gold 10%
+    ];
+
+    // Build cumulative distribution
+    const cumulative = colorCandidates.reduce<number[]>((acc, cur) => {
+      const sum = (acc.length ? acc[acc.length - 1] : 0) + cur.weight;
+      acc.push(sum);
+      return acc;
+    }, []);
+
+    function pickColorBase(): THREE.Color {
+      const r = Math.random();
+      for (let i = 0; i < cumulative.length; i++) {
+        if (r <= cumulative[i]) return colorCandidates[i].color;
+      }
+      return colorCandidates[0].color;
+    }
+
     const loader = new GLTFLoader();
     loader.load(
       modelUrl,
       (gltf) => {
-        gltf.scene.rotation.x = Math.PI; // flip model
+        gltf.scene.rotation.x = Math.PI;
         const geoms: THREE.BufferGeometry[] = [];
-        gltf.scene.traverse(o => { if ((o as THREE.Mesh).isMesh) geoms.push((o as THREE.Mesh).geometry); });
+        gltf.scene.traverse(o => {
+          if ((o as THREE.Mesh).isMesh) geoms.push((o as THREE.Mesh).geometry);
+        });
         const merged = BufferGeometryUtils.mergeGeometries(geoms, false);
         const mesh = new THREE.Mesh(merged);
         const sampler = new MeshSurfaceSampler(mesh).build();
 
-        // allocate arrays
         basePositions = new Float32Array(particleCount * 3);
         baseNormals   = new Float32Array(particleCount * 3);
         normalPhases  = new Float32Array(particleCount);
@@ -133,20 +148,21 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         const tmpPos = new THREE.Vector3();
         const tmpNorm = new THREE.Vector3();
 
-        // sample & store base data
         for (let i = 0; i < particleCount; i++) {
           sampler.sample(tmpPos, tmpNorm);
-          basePositions.set([tmpPos.x, tmpPos.y, tmpPos.z], i*3);
+          basePositions.set([tmpPos.x, tmpPos.y, tmpPos.z], i * 3);
           tmpNorm.normalize();
-          baseNormals.set([tmpNorm.x, tmpNorm.y, tmpNorm.z], i*3);
-          normalPhases[i] = Math.random() * Math.PI * 2; // random phase
+          baseNormals.set([tmpNorm.x, tmpNorm.y, tmpNorm.z], i * 3);
+          normalPhases[i] = Math.random() * Math.PI * 2;
+
+          // pick one of three base colors by weighted random
+          const baseCol = pickColorBase().clone();
           const d = Math.max(tmpNorm.dot(lightDirVec), 0);
           const shade = ambientI + diffuseI * d;
-          const c = baseColorObj.clone().multiplyScalar(shade).offsetHSL(0,0,(Math.random()-0.5)*0.03);
-          colorArr.set([c.r, c.g, c.b], i*3);
+          baseCol.multiplyScalar(shade).offsetHSL(0, 0, (Math.random() - 0.5) * 0.03);
+          colorArr.set([baseCol.r, baseCol.g, baseCol.b], i * 3);
         }
 
-        // build PointsGeometry
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(basePositions.slice(), 3));
         geometry.setAttribute('color',    new THREE.BufferAttribute(colorArr, 3));
@@ -159,7 +175,6 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       err => console.error('GLTF load error:', err)
     );
 
-    // 4) Animation loop
     const clock = new THREE.Clock();
     let frameId: number;
     const animate = () => {
@@ -169,15 +184,13 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       if (pts) {
         const arr = (pts.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
         for (let i = 0; i < particleCount; i++) {
-          const idx = i*3;
-          const phase  = normalPhases[i];
-          const offset = Math.sin(t * normalSpeed + phase) * normalAmplitude; // jitter
+          const idx = i * 3;
+          const offset = Math.sin(t * normalSpeed + normalPhases[i]) * normalAmplitude;
           arr[idx]     = basePositions[idx]     + baseNormals[idx]     * offset;
-          arr[idx+1]   = basePositions[idx+1]   + baseNormals[idx+1]   * offset;
-          arr[idx+2]   = basePositions[idx+2]   + baseNormals[idx+2]   * offset;
+          arr[idx + 1] = basePositions[idx + 1] + baseNormals[idx + 1] * offset;
+          arr[idx + 2] = basePositions[idx + 2] + baseNormals[idx + 2] * offset;
         }
         pts.geometry.attributes.position.needsUpdate = true;
-        // apply other animations
         pts.rotation.y = Math.sin(t * swingSpeed) * swingAngle;
         pts.rotation.x = 0.05 * Math.sin(breathSpeed * t);
         const scalePulse = 1 + 0.015 * Math.sin(pulseStrength * t);
@@ -188,7 +201,6 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     };
     animate();
 
-    // 5) Responsive resize
     const onResize = () => {
       const w = container.clientWidth;
       const h = container.clientHeight;
@@ -211,8 +223,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     breathSpeed, pulseStrength,
     zoomSpeed, zoomAmp,
     particleSize,
-    baseColor, lightDirection,
-    shadingAmbient, shadingDiffuse,
+    lightDirection, shadingAmbient, shadingDiffuse,
     normalSpeed, normalAmplitude,
     ambientLightColor, ambientLightIntensity,
     pointLightColor, pointLightIntensity,
@@ -220,8 +231,8 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   ]);
 
   return (
-    <div ref={containerRef} className={`relative overflow-visible ${size} ${className}`} /> // wrapper with visible overflow
+    <div ref={containerRef} className={`relative overflow-visible ${size} ${className}`} />
   );
 };
 
-export default ParticleAnimation; // export the component
+export default ParticleAnimation;

@@ -44,14 +44,14 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-80 w-80',            // default: moderate container (min-small, max-full)
   className = '',                // default: no extra CSS
   modelUrl = '/mask/scene.gltf', // default model path in public folder
-  particleCount = 3000,          // default samples (~3k) (1000–50000)
+  particleCount = 3500,          // default samples (~3k) (1000–50000)
 
   swingSpeed = 0.3,              // default swing speed (0–5)
   swingAngle = Math.PI / 6,      // default swing angle (~30°, 0–π/2)
   breathSpeed = 0.8,             // default breath speed (0–5)
   pulseStrength = 1,             // default pulse freq (0–10)
   zoomSpeed = 0.2,               // default zoom speed (0–5)
-  zoomAmp = 1,                   // default zoom amplitude (0–200)
+  zoomAmp = 0.6,                 // default zoom amplitude (0–200)
   particleSize = 0.01,           // default point size (0.01–1)
 
   baseColor = '#444444',         // default particle color (hex)

@@ -55,9 +55,17 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
       // color: 5% gold, 95% dark green
       if (Math.random() < 0.05) {
-        color.setRGB(0.85 + Math.random() * 0.15, 0.7 + Math.random() * 0.1, 0.2 + Math.random() * 0.05);
+        color.setRGB(
+          0.85 + Math.random() * 0.15, // R (0.85–1.0)
+          0.7  + Math.random() * 0.1,  // G (0.7–0.8)
+          0.2  + Math.random() * 0.05  // B (0.2–0.25)
+        );
       } else {
-        color.setRGB(0.03 + Math.random() * 0.04, 0.3 + Math.random() * 0.08, 0.15 + Math.random() * 0.06);
+        color.setRGB(
+          0.03 + Math.random() * 0.04, // R (0.03–0.07)
+          0.3  + Math.random() * 0.08, // G (0.3–0.38)
+          0.15 + Math.random() * 0.06  // B (0.15–0.21)
+        );
       }
       colors.set([color.r, color.g, color.b], i * 3);
     }
@@ -67,21 +75,20 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     geometry.setAttribute('color',    new THREE.BufferAttribute(colors,    3));
 
     const material = new THREE.PointsMaterial({
-      size: 0.04,               // dot size (0.01–0.1)
-      vertexColors: true,       // use per-vertex colors
-      transparent: true,        // allow opacity
-      opacity: 0.8,             // dot opacity
+      size: 0.04,                      // dot size (0.01–0.1)
+      vertexColors: true,              // use per-vertex colors
+      transparent: true,               // allow opacity
+      opacity: 0.8,                    // dot opacity
       blending: THREE.AdditiveBlending // glow effect
     });
 
     const pointCloud = new THREE.Points(geometry, material);
     scene.add(pointCloud);
 
-        // 3) Global pointer interaction: map mouse/touch anywhere on page to normalized [0,1]
+    // 3) Global pointer interaction: map mouse/touch anywhere on page to normalized [0,1]
     const updatePointer = (e: MouseEvent | TouchEvent) => {
       let x = 0.5, y = 0.5;
       if (e instanceof MouseEvent) {
-        // use full window dimensions
         x = e.clientX / window.innerWidth;
         y = 1 - e.clientY / window.innerHeight;
       } else if ('touches' in e && e.touches[0]) {
@@ -92,7 +99,6 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       pointer.current.x = THREE.MathUtils.clamp(x, 0, 1);
       pointer.current.y = THREE.MathUtils.clamp(y, 0, 1);
     };
-    // attach to window for global interaction
     window.addEventListener('mousemove', updatePointer);
     window.addEventListener('touchmove', updatePointer);
 
@@ -107,10 +113,10 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       // constant rotation around Y
       pointCloud.rotation.y = t * 0.3;
       
-      // interactive X-rotation: amplitude 0-0.5 rad based on pointer.x
+      // interactive X-rotation: amplitude 0–0.5 rad based on pointer.x
       pointCloud.rotation.x = Math.sin(t * 0.2) * pointer.current.x * 0.5;
       
-      // interactive pulse: scale fluctuation amplitude 0-0.05 based on pointer.y
+      // interactive pulse: scale fluctuation amplitude 0–0.05 based on pointer.y
       const pulse = Math.sin(t * 0.7) * pointer.current.y * 0.05;
       pointCloud.scale.set(1 + pulse, 1 + pulse, 1 + pulse);
 
@@ -129,10 +135,6 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
       renderer.render(scene, camera);
     };
-    animate(); // inform Three.js of changes
-
-      renderer.render(scene, camera);
-    };
     animate();
 
     // 5) Handle resize
@@ -146,8 +148,8 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     // cleanup
     return () => {
       cancelAnimationFrame(frameId!);
-      container.removeEventListener('mousemove', updatePointer);
-      container.removeEventListener('touchmove', updatePointer);
+      window.removeEventListener('mousemove', updatePointer);
+      window.removeEventListener('touchmove', updatePointer);
       window.removeEventListener('resize', onResize);
       renderer.dispose(); geometry.dispose(); material.dispose();
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);

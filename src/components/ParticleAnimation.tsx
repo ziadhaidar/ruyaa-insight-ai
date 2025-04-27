@@ -1,233 +1,183 @@
-import React, { useRef, useEffect } from 'react'; // React + hooks
-import * as THREE from 'three'; // core Three.js
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'; // GLTF/GLB loader
-import { MeshSurfaceSampler } from 'three/examples/jsm/math/MeshSurfaceSampler.js'; // sampler for uniform surface sampling
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'; // merge geometries
 
-// Props: tunable parameters with defaults & min/max ranges
+import React, { useRef, useEffect } from 'react';
+import * as THREE from 'three';
+
 interface ParticleAnimationProps {
-  size?: string;                   // Tailwind container size (min: 'h-0 w-0', max: 'h-full w-full')
-  className?: string;              // Extra CSS classes
-  modelUrl?: string;               // URL to .gltf/.glb model
-  particleCount?: number;          // Number of particles (min: 1000, max: 50000)
-
-  // Animation
-  swingSpeed?: number;             // Y-axis swing speed (min: 0, max: 5)
-  swingAngle?: number;             // Y-axis swing angle in radians (min: 0, max: Math.PI/2)
-  breathSpeed?: number;            // X-axis “breath” rotation speed (min: 0, max: 5)
-  pulseStrength?: number;          // Scale pulse frequency (min: 0, max: 10)
-  zoomSpeed?: number;              // Z-axis in/out speed (min: 0, max: 5)
-  zoomAmp?: number;                // Z-axis amplitude distance (min: 0, max: 200)
-
-  // Visual
-  particleSize?: number;           // Particle point size (min: 0.01, max: 1)
-
-  // Shading
-  lightDirection?: [number, number, number]; // Light direction vector
-  shadingAmbient?: number;         // Ambient shading (min: 0, max: 1)
-  shadingDiffuse?: number;         // Diffuse shading (min: 0, max: 1)
-
-  // Lighting
-  ambientLightColor?: string;      // Ambient light color
-  ambientLightIntensity?: number;  // Ambient intensity (min: 0, max: 2)
-  pointLightColor?: string;        // Point light color
-  pointLightIntensity?: number;    // Point intensity (min: 0, max: 2)
-  pointLightPosition?: [number, number, number]; // Point light XYZ position
+  size?: string;
+  className?: string;
 }
 
-const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
-  size = 'h-80 w-80',
-  className = '',
-  modelUrl = '/girlhead/scene.gltf',
-  particleCount = 50000,
-  swingSpeed = 0.3,
-  swingAngle = Math.PI / 6,
-  breathSpeed = 0.8,
-  pulseStrength = 1,
-  zoomSpeed = 0.5,
-  zoomAmp = 10,
-  particleSize = 0.01,
-  lightDirection = [0, 50, 50],
-  shadingAmbient = 1,
-  shadingDiffuse = 0.7,
-  ambientLightColor = '#ffffff',
-  ambientLightIntensity = 0.6,
-  pointLightColor = '#ffffff',
-  pointLightIntensity = 0.8,
-  pointLightPosition = [-10, 50, 60],
+const ParticleAnimation: React.FC<ParticleAnimationProps> = ({ 
+  size = "h-60 w-60", 
+  className = "" 
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const pointsRef = useRef<THREE.Points>();
-
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const particlesRef = useRef<THREE.Points | null>(null);
+  
   useEffect(() => {
     if (!containerRef.current) return;
+    
+    // Initialize Three.js scene
     const container = containerRef.current;
-
-    // Buffers
-    let basePositions: Float32Array;
-
-    // 1) Scene + camera + renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
-      120,                                  // FOV (deg)
-      container.clientWidth / container.clientHeight,
-      0.1,                                  // near plane
-      1000                                  // far plane
+      75, 
+      container.clientWidth / container.clientHeight, 
+      0.1, 
+      1000
     );
-    camera.position.set(0, -10, 110);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    const cw = container.clientWidth,
-      ch = container.clientHeight;
-    renderer.setSize(cw * 1.5, ch * 1.5);
-    renderer.domElement.style.position = 'absolute';
-    renderer.domElement.style.top = '-25%';
-    renderer.domElement.style.left = '-25%';
-    renderer.setPixelRatio(window.devicePixelRatio);
+    
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      alpha: true
+    });
+    renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
-
-    // 2) Lights
-    scene.add(new THREE.AmbientLight(ambientLightColor, ambientLightIntensity));
-    const pl = new THREE.PointLight(pointLightColor, pointLightIntensity);
-    pl.position.set(...pointLightPosition);
-    scene.add(pl);
-
-    // Shading constants
-    const lightDirVec = new THREE.Vector3(...lightDirection).normalize();
-    const ambientI = shadingAmbient,
-      diffuseI = shadingDiffuse;
-
-    // Color palette
-    const colorCandidates = [
-      { color: new THREE.Color('#25572b'), weight: 0.6 },
-      { color: new THREE.Color('#255744'), weight: 0.3 },
-      { color: new THREE.Color('#255157'), weight: 0.1 },
-    ];
-    const cum = colorCandidates.reduce<number[]>((acc, { weight }) => {
-      acc.push((acc.at(-1) ?? 0) + weight);
-      return acc;
-    }, []);
-    const pickColor = () => {
-      const r = Math.random();
-      for (let i = 0; i < cum.length; i++) if (r <= cum[i]) return colorCandidates[i].color.clone();
-      return colorCandidates[0].color.clone();
-    };
-
-    // 3) Load model & uniform surface sampling
-    const loader = new GLTFLoader();
-    loader.load(
-      modelUrl,
-      (gltf) => {
-        gltf.scene.rotation.x = Math.PI; // flip if needed
-        const geoms: THREE.BufferGeometry[] = [];
-        gltf.scene.traverse((o) => {
-          if ((o as THREE.Mesh).isMesh) geoms.push((o as THREE.Mesh).geometry);
-        });
-        const merged = BufferGeometryUtils.mergeGeometries(geoms, false);
-        merged.computeVertexNormals();
-
-        // Sampler for uniform distribution
-        const mesh = new THREE.Mesh(merged);
-        const sampler = new MeshSurfaceSampler(mesh).build();
-
-        // Initialize buffers
-        basePositions = new Float32Array(particleCount * 3);
-        const colorArr = new Float32Array(particleCount * 3);
-        const tmpPos = new THREE.Vector3();
-        const tmpNorm = new THREE.Vector3();
-
-        // Sample particles
-        for (let i = 0; i < particleCount; i++) {
-          sampler.sample(tmpPos, tmpNorm); // uniform across faces
-          basePositions.set([tmpPos.x, -tmpPos.y, tmpPos.z], i * 3);
-
-          // Lambert shading
-          const d = Math.max(tmpNorm.normalize().dot(lightDirVec), 0);
-          const shade = ambientI + diffuseI * d;
-          const col = pickColor().multiplyScalar(shade).offsetHSL(0, 0, (Math.random() - 0.5) * 0.03);
-          colorArr.set([col.r, col.g, col.b], i * 3);
-        }
-
-        // Build points mesh
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.BufferAttribute(basePositions, 3));
-        geo.setAttribute('color', new THREE.BufferAttribute(colorArr, 3));
-        const mat = new THREE.PointsMaterial({
-          size: particleSize,       // (0.01–1)
-          vertexColors: true,
-          transparent: true,
-          opacity: 0.9,
-          sizeAttenuation: true,
-        });
-        const pts = new THREE.Points(geo, mat);
-        scene.add(pts);
-        pointsRef.current = pts;
-      },
-      undefined,
-      (err) => console.error('GLTF load error:', err)
-    );
-
-    // 4) Animate: swing, breath, pulse, zoom
-    const clock = new THREE.Clock();
+    
+    // Create particles - increased count for more density
+    const particleCount = 5000;
+    const particles = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    
+    // Sphere setup with more varied distribution
+    const radius = 2.5;
+    
+    for(let i = 0; i < particleCount; i++) {
+      // Use spherical coordinates for even distribution
+      const phi = Math.acos(-1 + (2 * i) / particleCount);
+      const theta = Math.sqrt(particleCount * Math.PI) * phi;
+      
+      // Add slight randomness for more natural look
+      const randRadius = radius * (0.95 + Math.random() * 0.1);
+      
+      // Convert spherical to cartesian coordinates
+      positions[i * 3] = randRadius * Math.sin(phi) * Math.cos(theta);     // x
+      positions[i * 3 + 1] = randRadius * Math.sin(phi) * Math.sin(theta); // y
+      positions[i * 3 + 2] = randRadius * Math.cos(phi);                   // z
+      
+      // Use predominantly dark green with sparse gold particles (only ~5% gold)
+      const isGold = Math.random() < 0.05; // Only 5% chance of being gold
+      
+      if (isGold) {
+        // Gold particles - slightly brighter to stand out
+        colors[i * 3] = 0.85 + Math.random() * 0.15;     // R
+        colors[i * 3 + 1] = 0.70 + Math.random() * 0.10; // G
+        colors[i * 3 + 2] = 0.20 + Math.random() * 0.10; // B
+      } else {
+        // Dark green particles - with subtle variations
+        colors[i * 3] = 0.03 + Math.random() * 0.04;     // R
+        colors[i * 3 + 1] = 0.30 + Math.random() * 0.08; // G
+        colors[i * 3 + 2] = 0.15 + Math.random() * 0.06; // B
+      }
+    }
+    
+    particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    
+    const particleMaterial = new THREE.PointsMaterial({
+      size: 0.04, // Smaller particles for a more refined look
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending
+    });
+    
+    const pointCloud = new THREE.Points(particles, particleMaterial);
+    scene.add(pointCloud);
+    
+    // Position camera
+    camera.position.z = 6;
+    
+    // Animation variables
+    const originalPositions = positions.slice();
+    
+    // Save references
+    sceneRef.current = scene;
+    cameraRef.current = camera;
+    rendererRef.current = renderer;
+    particlesRef.current = pointCloud;
+    
+    // Animation loop
     let frameId: number;
+    const animationTime = { value: 0 };
+    
     const animate = () => {
       frameId = requestAnimationFrame(animate);
-      const t = clock.getElapsedTime();
-      const pts = pointsRef.current;
-      if (pts) {
-        pts.rotation.y = Math.sin(t * swingSpeed) * swingAngle;  // swing
-        pts.rotation.x = 0.05 * Math.sin(breathSpeed * t);      // breath
-        const sp = 1 + 0.015 * Math.sin(pulseStrength * t);     // pulse
-        pts.scale.set(sp, sp, sp);
-        pts.position.z = zoomAmp * Math.sin(t * zoomSpeed);     // zoom
+      animationTime.value += 0.005; // Slower, smoother animation
+      
+      // Rotate the sphere
+      pointCloud.rotation.y = animationTime.value * 0.3;
+      pointCloud.rotation.x = Math.sin(animationTime.value * 0.2) * 0.2;
+      
+      // Gently pulse the sphere
+      const pulseScale = 1 + Math.sin(animationTime.value * 0.7) * 0.03;
+      pointCloud.scale.set(pulseScale, pulseScale, pulseScale);
+      
+      // Add subtle wave-like movement to particles
+      const positionArray = pointCloud.geometry.attributes.position.array as Float32Array;
+      
+      for(let i = 0; i < particleCount; i++) {
+        const idx = i * 3;
+        const originalX = originalPositions[idx];
+        const originalY = originalPositions[idx + 1];
+        const originalZ = originalPositions[idx + 2];
+        
+        // Calculate distance from origin for wave effect
+        const distance = Math.sqrt(
+          originalX * originalX + 
+          originalY * originalY + 
+          originalZ * originalZ
+        );
+        
+        // Wave effect that moves outward
+        const waveFactor = 0.05 * Math.sin(distance * 2 - animationTime.value * 2);
+        
+        // Apply wave with original position
+        positionArray[idx] = originalX * (1 + waveFactor);
+        positionArray[idx + 1] = originalY * (1 + waveFactor);
+        positionArray[idx + 2] = originalZ * (1 + waveFactor);
       }
+      
+      // Flag geometry for update
+      pointCloud.geometry.attributes.position.needsUpdate = true;
+      
       renderer.render(scene, camera);
     };
+    
     animate();
-
-    // 5) Handle resize
-    const onResize = () => {
-      const w = container.clientWidth, h = container.clientHeight;
-      camera.aspect = w / h;
+    
+    // Handle resize
+    const handleResize = () => {
+      if (!containerRef.current || !cameraRef.current || !rendererRef.current) return;
+      
+      const container = containerRef.current;
+      const camera = cameraRef.current;
+      const renderer = rendererRef.current;
+      
+      camera.aspect = container.clientWidth / container.clientHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(w * 1.5, h * 1.5);
-      renderer.domElement.style.top = '-25%';
-      renderer.domElement.style.left = '-25%';
+      renderer.setSize(container.clientWidth, container.clientHeight);
     };
-    window.addEventListener('resize', onResize);
-
-    // Cleanup
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Clean up
     return () => {
-      cancelAnimationFrame(frameId!);
-      window.removeEventListener('resize', onResize);
-      if (renderer.domElement && container) container.removeChild(renderer.domElement);
+      cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', handleResize);
+      if (renderer && container) {
+        container.removeChild(renderer.domElement);
+      }
     };
-  }, [
-    modelUrl,
-    particleCount,
-    swingSpeed,
-    swingAngle,
-    breathSpeed,
-    pulseStrength,
-    zoomSpeed,
-    zoomAmp,
-    particleSize,
-    lightDirection,
-    shadingAmbient,
-    shadingDiffuse,
-    ambientLightColor,
-    ambientLightIntensity,
-    pointLightColor,
-    pointLightIntensity,
-    pointLightPosition,
-  ]);
-
+  }, []);
+  
   return (
-    <div
-      ref={containerRef}
-      className={`relative overflow-visible ${size} ${className}`}
-    />
+    <div ref={containerRef} className={`${size} ${className}`} />
   );
 };
 

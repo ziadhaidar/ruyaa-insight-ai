@@ -43,14 +43,14 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-80 w-80',                 // default container size
   className = '',                     // no extra CSS
   modelUrl = '/girlhead/scene.gltf',      // default model path
-  particleCount = 20000,               // 3.5k samples (1000–50000)
+  particleCount = 50000,               // 3.5k samples (1000–50000)
 
   swingSpeed = 0.3,                   // swing speed (0–5)
   swingAngle = Math.PI / 6,           // swing angle ~30° (0–π/2)
   breathSpeed = 0.8,                  // breath speed (0–5)
   pulseStrength = 1,                  // pulse freq (0–10)
-  zoomSpeed = 1,                    // zoom speed (0–5)
-  zoomAmp = 20,                      // zoom amplitude (0–200)
+  zoomSpeed = 0.5,                    // zoom speed (0–5)
+  zoomAmp = 10,                      // zoom amplitude (0–200)
   particleSize = 0.01,                // point size (0.01–1)
 
   lightDirection = [0, 50, 50],       // light vector, normalized inside
@@ -86,7 +86,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       0.1,                              // near plane (0.01+)
       1000                              // far plane
     );
-    camera.position.set(0, 0, 50);     // camera placement
+    camera.position.set(0, -10, 70);     // camera placement
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     const cw = container.clientWidth, ch = container.clientHeight;

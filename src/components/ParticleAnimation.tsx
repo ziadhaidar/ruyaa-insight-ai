@@ -42,7 +42,7 @@ interface ParticleAnimationProps {
 const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
   size = 'h-80 w-80',                 // default container size
   className = '',                     // no extra CSS
-  modelUrl = '/mask/scene.gltf',      // default model path
+  modelUrl = '/girlhead/scene.gltf',      // default model path
   particleCount = 4000,               // 3.5k samples (1000–50000)
 
   swingSpeed = 0.3,                   // swing speed (0–5)

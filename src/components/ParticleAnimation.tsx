@@ -77,21 +77,24 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     const pointCloud = new THREE.Points(geometry, material);
     scene.add(pointCloud);
 
-    // 3) Pointer interaction: map mouse/touch to normalized [0,1]
+        // 3) Global pointer interaction: map mouse/touch anywhere on page to normalized [0,1]
     const updatePointer = (e: MouseEvent | TouchEvent) => {
       let x = 0.5, y = 0.5;
-      if ('touches' in e) {
-        x = e.touches[0].clientX / container.clientWidth;
-        y = 1 - e.touches[0].clientY / container.clientHeight;
-      } else {
-        x = e.offsetX / container.clientWidth;
-        y = 1 - e.offsetY / container.clientHeight;
+      if (e instanceof MouseEvent) {
+        // use full window dimensions
+        x = e.clientX / window.innerWidth;
+        y = 1 - e.clientY / window.innerHeight;
+      } else if ('touches' in e && e.touches[0]) {
+        x = e.touches[0].clientX / window.innerWidth;
+        y = 1 - e.touches[0].clientY / window.innerHeight;
       }
+      // clamp to [0,1]
       pointer.current.x = THREE.MathUtils.clamp(x, 0, 1);
       pointer.current.y = THREE.MathUtils.clamp(y, 0, 1);
     };
-    container.addEventListener('mousemove', updatePointer);
-    container.addEventListener('touchmove', updatePointer);
+    // attach to window for global interaction
+    window.addEventListener('mousemove', updatePointer);
+    window.addEventListener('touchmove', updatePointer);
 
     // 4) Animation loop
     const clock = new THREE.Clock();
@@ -104,10 +107,10 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       // constant rotation around Y
       pointCloud.rotation.y = t * 0.3;
       
-      // interactive X-rotation: amplitude 0–0.5 rad based on pointer.x
+      // interactive X-rotation: amplitude 0-0.5 rad based on pointer.x
       pointCloud.rotation.x = Math.sin(t * 0.2) * pointer.current.x * 0.5;
       
-      // interactive pulse: scale fluctuation amplitude 0–0.05 based on pointer.y
+      // interactive pulse: scale fluctuation amplitude 0-0.05 based on pointer.y
       const pulse = Math.sin(t * 0.7) * pointer.current.y * 0.05;
       pointCloud.scale.set(1 + pulse, 1 + pulse, 1 + pulse);
 
@@ -123,6 +126,10 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         posArr[idx + 2] = oz * (1 + w);
       }
       geometry.attributes.position.needsUpdate = true; // inform Three.js of changes
+
+      renderer.render(scene, camera);
+    };
+    animate(); // inform Three.js of changes
 
       renderer.render(scene, camera);
     };

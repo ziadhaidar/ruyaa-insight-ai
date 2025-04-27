@@ -103,7 +103,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
     // color palette
     const colorCandidates = [
-      { color: new THREE.Color('#ffffff'), weight: 0.6 },
+      { color: new THREE.Color('#000000'), weight: 0.6 },
       { color: new THREE.Color('#255744'), weight: 0.3 },
       { color: new THREE.Color('#255157'), weight: 0.1 },
     ];

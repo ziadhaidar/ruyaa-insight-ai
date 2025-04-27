@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react'; // React + hooks
 import * as THREE from 'three'; // core Three.js
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'; // GLTF/GLB loader
-import { MeshSurfaceSampler } from 'three/examples/jsm/math/MeshSurfaceSampler.js'; // surface sampler for uniform distribution
+import { MeshSurfaceSampler } from 'three/examples/jsm/math/MeshSurfaceSampler.js'; // sampler for uniform surface sampling
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'; // merge geometries
 
 // Props: tunable parameters with defaults & min/max ranges
@@ -24,14 +24,14 @@ interface ParticleAnimationProps {
 
   // Shading
   lightDirection?: [number, number, number]; // Light direction vector
-  shadingAmbient?: number;         // Ambient shading factor (min: 0, max: 1)
-  shadingDiffuse?: number;         // Diffuse shading factor (min: 0, max: 1)
+  shadingAmbient?: number;         // Ambient shading (min: 0, max: 1)
+  shadingDiffuse?: number;         // Diffuse shading (min: 0, max: 1)
 
   // Debug lights
   ambientLightColor?: string;      // Ambient light color
-  ambientLightIntensity?: number;  // Ambient light intensity (min: 0, max: 2)
+  ambientLightIntensity?: number;  // Ambient intensity (min: 0, max: 2)
   pointLightColor?: string;        // Point light color
-  pointLightIntensity?: number;    // Point light intensity (min: 0, max: 2)
+  pointLightIntensity?: number;    // Point intensity (min: 0, max: 2)
   pointLightPosition?: [number, number, number]; // Point light XYZ position
 }
 
@@ -69,7 +69,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
 
     let basePositions: Float32Array;
 
-    // 1) scene + camera + renderer
+    // 1) Scene, camera, renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
       120,                                  // FOV (deg)
@@ -89,7 +89,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
 
-    // 2) debug lights
+    // 2) Lights
     scene.add(new THREE.AmbientLight(ambientLightColor, ambientLightIntensity));
     const pl = new THREE.PointLight(pointLightColor, pointLightIntensity);
     pl.position.set(...pointLightPosition);
@@ -115,12 +115,12 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       return colorCandidates[0].color.clone();
     };
 
-    // 3) load model & uniformly sample surface
+    // 3) Load model & sample only front-facing surface
     const loader = new GLTFLoader();
     loader.load(
       modelUrl,
       (gltf) => {
-        gltf.scene.rotation.x = Math.PI; // flip model if needed
+        gltf.scene.rotation.x = Math.PI; // flip if needed
         const geoms: THREE.BufferGeometry[] = [];
         gltf.scene.traverse((o) => {
           if ((o as THREE.Mesh).isMesh) geoms.push((o as THREE.Mesh).geometry);
@@ -132,25 +132,31 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
         const sampler = new MeshSurfaceSampler(mesh).build();
         basePositions = new Float32Array(particleCount * 3);
         const colorArr = new Float32Array(particleCount * 3);
-        const tmpPos = new THREE.Vector3(), tmpNorm = new THREE.Vector3();
+        const tmpPos = new THREE.Vector3(), tmpNorm = new THREE.Vector3(), viewDir = new THREE.Vector3();
 
-        for (let i = 0; i < particleCount; i++) {
-          sampler.sample(tmpPos, tmpNorm);                       // uniform surface sample
-          basePositions.set([tmpPos.x, -tmpPos.y, tmpPos.z], i * 3);
+        let placed = 0;
+        while (placed < particleCount) {
+          sampler.sample(tmpPos, tmpNorm);                     // uniform sample
+          // compute view direction vector
+          viewDir.copy(camera.position).sub(tmpPos).normalize();
+          if (tmpNorm.dot(viewDir) <= 0) continue;             // skip back-facing samples
 
-          // Lambert shading
+          // set position (invert Y if model is flipped)
+          basePositions.set([tmpPos.x, -tmpPos.y, tmpPos.z], placed * 3);
+          // shading & color
           const d = Math.max(tmpNorm.dot(lightDirVec), 0);
           const shade = ambientI + diffuseI * d;
           const col = pickColor().multiplyScalar(shade).offsetHSL(0, 0, (Math.random() - 0.5) * 0.03);
-          colorArr.set([col.r, col.g, col.b], i * 3);
+          colorArr.set([col.r, col.g, col.b], placed * 3);
+          placed++;
         }
 
-        // build points mesh
+        // build Points mesh
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(basePositions, 3));
         geo.setAttribute('color', new THREE.BufferAttribute(colorArr, 3));
         const mat = new THREE.PointsMaterial({
-          size: particleSize,
+          size: particleSize,          // (0.01–1)
           vertexColors: true,
           transparent: true,
           opacity: 0.9,
@@ -164,7 +170,7 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       (err) => console.error('GLTF load error:', err)
     );
 
-    // 4) animate: swing, breath, pulse, zoom
+    // 4) Animate: swing, breath, pulse, zoom
     const clock = new THREE.Clock();
     let frameId: number;
     const animate = () => {
@@ -172,47 +178,8 @@ const ParticleAnimation: React.FC<ParticleAnimationProps> = ({
       const t = clock.getElapsedTime();
       const pts = pointsRef.current;
       if (pts) {
-        pts.rotation.y = Math.sin(t * swingSpeed) * swingAngle;
-        pts.rotation.x = 0.05 * Math.sin(breathSpeed * t);
-        const sp = 1 + 0.015 * Math.sin(pulseStrength * t);
+        pts.rotation.y = Math.sin(t * swingSpeed) * swingAngle;      // swing (0–5, 0–PI/2)
+        pts.rotation.x = 0.05 * Math.sin(breathSpeed * t);          // breath (0–5)
+        const sp = 1 + 0.015 * Math.sin(pulseStrength * t);         // pulse (0–10)
         pts.scale.set(sp, sp, sp);
-        pts.position.z = zoomAmp * Math.sin(t * zoomSpeed);
-      }
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    // 5) handle resize
-    const onResize = () => {
-      const w = container.clientWidth, h = container.clientHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w * 1.5, h * 1.5);
-      renderer.domElement.style.top = '-25%';
-      renderer.domElement.style.left = '-25%';
-    };
-    window.addEventListener('resize', onResize);
-
-    return () => {
-      cancelAnimationFrame(frameId!);
-      window.removeEventListener('resize', onResize);
-      if (renderer.domElement && container) container.removeChild(renderer.domElement);
-    };
-  }, [
-    modelUrl, particleCount,
-    swingSpeed, swingAngle, breathSpeed, pulseStrength, zoomSpeed, zoomAmp,
-    particleSize,
-    lightDirection, shadingAmbient, shadingDiffuse,
-    ambientLightColor, ambientLightIntensity,
-    pointLightColor, pointLightIntensity, pointLightPosition,
-  ]);
-
-  return (
-    <div
-      ref={containerRef}
-      className={`relative overflow-visible ${size} ${className}`}
-    />
-  );
-};
-
-export default ParticleAnimation;
+        pts.position.z = zoomAmp * Math.sin(t * zoomSpeed);         // zoom

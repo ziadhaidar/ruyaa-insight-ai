@@ -186,6 +186,149 @@ Do not ask any further questions.`;
     }
   };
 
+  // Get an interpretation for a dream
+  const getInterpretation = async (dreamText: string) => {
+    try {
+      setIsLoading(true);
+      console.log("Getting interpretation for dream:", dreamText.substring(0, 50) + "...");
+      
+      // Create a new thread
+      const newThreadId = await createAssistantThread();
+      if (!newThreadId) {
+        throw new Error("Failed to create thread for interpretation");
+      }
+      
+      // Add the dream text to the thread
+      await addMessageToThread(newThreadId, dreamText, "user");
+      
+      // Run the assistant to get an interpretation
+      const run = await runAssistant(newThreadId, `
+        You are an Islamic dream interpreter. Please interpret this dream.
+        Include:
+        - A detailed but concise explanation
+        - One relevant Quranic verse (Arabic + English translation)
+        - One brief spiritual advice based on the dream.
+        Be compassionate and insightful.
+      `);
+      
+      if (!run) {
+        throw new Error("Failed to run assistant for interpretation");
+      }
+      
+      // Poll for completion
+      const runResult = await pollRunStatus(newThreadId, run.id);
+      console.log("Interpretation run completed with status:", runResult.status);
+      
+      // Get the assistant's response
+      const messages = await getMessages(newThreadId);
+      
+      if (!messages || messages.length === 0) {
+        throw new Error("No messages found after interpretation run");
+      }
+      
+      // Find the assistant's response (the latest assistant message)
+      const assistantMessages = messages.filter(m => m.role === "assistant");
+      const latestAssistantMessage = assistantMessages[0]; // They come in reverse chronological order
+      
+      if (!latestAssistantMessage) {
+        throw new Error("No assistant message found after interpretation run");
+      }
+      
+      // Extract the text from the assistant's response
+      const responseText = latestAssistantMessage.content[0]?.text?.value;
+      if (!responseText) {
+        throw new Error("Assistant message has no text content");
+      }
+      
+      console.log("Got dream interpretation:", responseText.substring(0, 50) + "...");
+      return responseText;
+    } catch (error) {
+      console.error("Error getting dream interpretation:", error);
+      toast({
+        title: "Interpretation Error",
+        description: `Could not get interpretation: ${error.message}`,
+        variant: "destructive"
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Ask a follow-up question about a dream interpretation
+  const askFollowUpQuestion = async (
+    question: string, 
+    dreamInterpretation: string,
+    chatHistory: { questions: string[], answers: string[] }
+  ) => {
+    try {
+      setIsLoading(true);
+      
+      // Create a new thread if needed
+      if (!threadId) {
+        const newThreadId = await createAssistantThread();
+        setThreadId(newThreadId);
+        
+        // Send the interpretation as context
+        await addMessageToThread(
+          newThreadId, 
+          `CONTEXT: This is a dream interpretation: ${dreamInterpretation}`, 
+          "user"
+        );
+        
+        // Send previous chat history as context
+        if (chatHistory.questions.length > 0) {
+          for (let i = 0; i < chatHistory.questions.length; i++) {
+            await addMessageToThread(newThreadId, chatHistory.questions[i], "user");
+            if (i < chatHistory.answers.length) {
+              await addMessageToThread(newThreadId, chatHistory.answers[i], "assistant");
+            }
+          }
+        }
+      }
+      
+      const currentThreadId = threadId as string;
+      
+      // Send the follow-up question
+      await addMessageToThread(currentThreadId, question, "user");
+      
+      // Run the assistant
+      const run = await runAssistant(currentThreadId, `
+        You are an Islamic dream interpreter answering a follow-up question about a dream interpretation.
+        Be compassionate, insightful, and helpful.
+        Provide a detailed but concise answer.
+        If relevant, include Islamic context or Quranic references.
+      `);
+      
+      if (!run) {
+        throw new Error("Failed to run assistant for follow-up");
+      }
+      
+      // Poll for completion
+      const runResult = await pollRunStatus(currentThreadId, run.id);
+      console.log("Follow-up run completed with status:", runResult.status);
+      
+      // Get the assistant's response
+      const assistantResponse = await getLatestAssistantMessage(currentThreadId);
+      if (!assistantResponse) {
+        throw new Error("No response found for follow-up question");
+      }
+      
+      console.log("Got follow-up response:", assistantResponse.substring(0, 50) + "...");
+      return assistantResponse;
+    } catch (error) {
+      console.error("Error processing follow-up question:", error);
+      toast({
+        title: "Question Error",
+        description: `Could not process your question: ${error.message}`,
+        variant: "destructive"
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Get the number of questions answered so far
   const getAnsweredQuestionsCount = async (threadId: string) => {
     try {
@@ -205,6 +348,8 @@ Do not ask any further questions.`;
     sendMessageToAssistant,
     runAssistantAndGetResponse,
     getAnsweredQuestionsCount,
-    getLatestAssistantMessage
+    getLatestAssistantMessage,
+    getInterpretation,
+    askFollowUpQuestion
   };
 };

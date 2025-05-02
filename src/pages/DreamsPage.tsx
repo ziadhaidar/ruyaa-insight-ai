@@ -28,7 +28,7 @@ const DreamsPage: React.FC = () => {
         </div>
 
         {/* Past Dreams Section: Wrapped in Card for better readability */}
-        <Card className="mb-6 shadow-md rounded-lg">
+        <Card className="mb-6 shadow-md rounded-lg bg-white/70">
           <CardContent className="p-6">
             {/* Section Title */}
             <h2 className="text-xl font-semibold mb-4">{t("yourPastDreams")}</h2>

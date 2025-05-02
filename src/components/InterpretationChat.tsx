@@ -16,6 +16,7 @@ const InterpretationChat = () => {
   const { id } = useParams();
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [dreamText, setDreamText] = useState("");
   const [dreamInterpretation, setDreamInterpretation] = useState("");
   const [chatHistory, setChatHistory] = useState<{
     questions: string[];
@@ -34,10 +35,23 @@ const InterpretationChat = () => {
   const { currentDream } = useDream();
 
   useEffect(() => {
+    // When component mounts, fetch dream data if there's an ID,
+    // or use currentDream if available from the dream context
     if (id) {
-      fetchDreamData();
+      fetchDreamData(id);
+    } else if (currentDream) {
+      // Check if we have a current dream and start interpretation
+      setDreamText(currentDream.dream_text);
+      handleInitialInterpretation(currentDream.dream_text);
+    } else {
+      // If no ID and no current dream, show an error
+      toast({
+        title: "No dream found",
+        description: "Please submit a dream first",
+        variant: "destructive",
+      });
     }
-  }, [id]);
+  }, [id, currentDream]);
 
   useEffect(() => {
     // Scroll to bottom when chat history updates
@@ -51,15 +65,13 @@ const InterpretationChat = () => {
     }
   }, [chatHistory]);
 
-  const fetchDreamData = async () => {
-    if (!id) return;
-
+  const fetchDreamData = async (dreamId: string) => {
     setIsLoading(true);
     try {
       const { data: dream, error } = await supabase
         .from("dreams")
         .select("*")
-        .eq("id", id)
+        .eq("id", dreamId)
         .single();
 
       if (error) {
@@ -73,6 +85,7 @@ const InterpretationChat = () => {
       }
 
       if (dream) {
+        setDreamText(dream.dream_text || "");
         setDreamInterpretation(dream.interpretation || "");
         
         // Load chat history if available
@@ -85,7 +98,7 @@ const InterpretationChat = () => {
         });
 
         // If no interpretation yet, fetch one
-        if (!dream.interpretation) {
+        if (!dream.interpretation && questions.length === 0) {
           handleInitialInterpretation(dream.dream_text);
         }
       }
@@ -104,46 +117,79 @@ const InterpretationChat = () => {
   const handleInitialInterpretation = async (dreamText: string) => {
     setIsLoading(true);
     try {
+      console.log("Starting initial interpretation for dream:", dreamText.substring(0, 50) + "...");
+      
       // Create a new thread
       const newThreadId = await createAssistantThread();
       if (!newThreadId) {
         throw new Error("Failed to create thread for interpretation");
       }
+      console.log("Created new thread:", newThreadId);
       setThreadId(newThreadId);
       
       // Add the dream text to the thread
       const userId = (await supabase.auth.getUser()).data.user?.id || "user";
+      console.log("Sending dream to assistant with user ID:", userId);
       await sendMessageToAssistant(newThreadId, dreamText, userId);
       
-      // Run the assistant to get the first question (not the full interpretation yet)
+      // Run the assistant to get the first question
+      console.log("Getting first question from assistant");
       const response = await runAssistantAndGetResponse(newThreadId, 1);
+      console.log("First question received:", response);
       
-      setDreamInterpretation(response);
-
-      // Save the initial response to the database
-      const { error } = await supabase
-        .from("dreams")
-        .update({ 
-          interpretation: response,
-          questions: [response],
-          answers: []
-        })
-        .eq("id", id);
-
-      if (error) {
-        console.error("Error saving interpretation:", error);
-        toast({
-          title: "Error saving interpretation",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-      
-      // Update local chat history
+      // Save the initial response as the first question
+      const updatedQuestions = [response];
       setChatHistory({
-        questions: [response],
+        questions: updatedQuestions,
         answers: []
       });
+      
+      // Save to database if we have an ID
+      let dreamId = id;
+      if (!dreamId && currentDream) {
+        // If we don't have an ID but we have a current dream, create a new record
+        const { data, error } = await supabase
+          .from("dreams")
+          .insert({
+            user_id: userId,
+            dream_text: dreamText,
+            interpretation: null,
+            questions: updatedQuestions,
+            answers: [],
+            status: "interpreting"
+          })
+          .select();
+          
+        if (error) {
+          console.error("Error creating dream record:", error);
+          toast({
+            title: "Error saving dream",
+            description: error.message,
+            variant: "destructive",
+          });
+        } else if (data && data.length > 0) {
+          dreamId = data[0].id;
+        }
+      } else if (dreamId) {
+        // If we have an ID, update the existing record
+        const { error } = await supabase
+          .from("dreams")
+          .update({ 
+            questions: updatedQuestions,
+            answers: []
+          })
+          .eq("id", dreamId);
+
+        if (error) {
+          console.error("Error saving questions:", error);
+          toast({
+            title: "Error saving interpretation",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      }
+      
     } catch (error) {
       console.error("Error getting interpretation:", error);
       toast({
@@ -158,7 +204,7 @@ const InterpretationChat = () => {
 
   const handleSubmitQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userInput.trim() || !id || !threadId) return;
+    if (!userInput.trim() || !threadId) return;
 
     const question = userInput.trim();
     setUserInput("");
@@ -197,29 +243,47 @@ const InterpretationChat = () => {
       }
 
       // Save to database
-      const updateData: any = {
-        questions: updatedQuestions,
-        answers: updatedAnswers,
-      };
-      
-      // If this was the final interpretation, mark it as such
-      if (nextQuestionNumber > 3) {
-        updateData.interpretation = assistantResponse;
-        updateData.status = "completed";
+      let dreamId = id;
+      if (!dreamId && currentDream) {
+        // Try to get the dream ID from the database
+        const { data, error } = await supabase
+          .from("dreams")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("dream_text", dreamText)
+          .order("created_at", { ascending: false })
+          .limit(1);
+          
+        if (!error && data && data.length > 0) {
+          dreamId = data[0].id;
+        }
       }
       
-      const { error } = await supabase
-        .from("dreams")
-        .update(updateData)
-        .eq("id", id);
+      if (dreamId) {
+        const updateData: any = {
+          questions: updatedQuestions,
+          answers: updatedAnswers,
+        };
+        
+        // If this was the final interpretation, mark it as such
+        if (nextQuestionNumber > 3) {
+          updateData.interpretation = assistantResponse;
+          updateData.status = "completed";
+        }
+        
+        const { error } = await supabase
+          .from("dreams")
+          .update(updateData)
+          .eq("id", dreamId);
 
-      if (error) {
-        console.error("Error saving chat history:", error);
-        toast({
-          title: "Error saving question",
-          description: error.message,
-          variant: "destructive",
-        });
+        if (error) {
+          console.error("Error saving chat history:", error);
+          toast({
+            title: "Error saving question",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error("Error asking follow-up question:", error);
@@ -239,15 +303,38 @@ const InterpretationChat = () => {
     }
   };
 
+  // Render the dream submission as the first message
+  const renderDreamSubmission = () => {
+    if (!dreamText) return null;
+    
+    return (
+      <div className="mb-6">
+        <div className="flex justify-end mb-2">
+          <div className="bg-primary p-3 rounded-lg text-primary-foreground max-w-[80%]">
+            <p className="text-sm font-medium mb-1">My Dream:</p>
+            <p className="text-sm">{dreamText}</p>
+          </div>
+          <Avatar className="h-8 w-8 ml-2">
+            <div className="h-full w-full bg-muted flex items-center justify-center rounded-full">
+              <span className="text-xs">You</span>
+            </div>
+          </Avatar>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-grow overflow-hidden" ref={scrollAreaRef}>
         <ScrollArea className="h-full pr-4">
-          {!dreamInterpretation && !chatHistory.questions.length && isLoading && (
+          {isLoading && !chatHistory.questions.length && (
             <div className="flex justify-center items-center py-10">
               <LoadingAnimation message="Preparing dream interpretation..." />
             </div>
           )}
+          
+          {renderDreamSubmission()}
           
           {chatHistory.questions.map((question, index) => (
             <div key={index} className="mb-6">
@@ -275,8 +362,8 @@ const InterpretationChat = () => {
             </div>
           ))}
 
-          {isLoading && (
-            <div className="flex justify-center items-center py-10">
+          {isLoading && chatHistory.questions.length > 0 && (
+            <div className="flex justify-center items-center py-4">
               <LoadingAnimation />
             </div>
           )}

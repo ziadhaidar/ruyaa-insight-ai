@@ -1,242 +1,262 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useDream } from "@/context/DreamContext";
-import { Message } from "@/types";
-import { Button } from "./ui/button";
-import { Textarea } from "./ui/textarea";
-import { Avatar } from "./ui/avatar";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
-import { useAuth } from "@/context/AuthContext";
-import { Badge } from "./ui/badge";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "./ui/alert";
-import { supabase } from "@/utils/supabase"; // Import supabase if not already imported
+
+import React, { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { useParams } from "react-router-dom";
+import { Avatar } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import LoadingAnimation from "./LoadingAnimation";
+import { useOpenAIAssistant } from "@/hooks/useOpenAIAssistant";
+import aiAvatar from "/ai_avatar.png";
 
 const InterpretationChat = () => {
-  const { currentSession, askQuestion, submitAnswer, isLoading } = useDream();
-  const { user } = useAuth();
-  const [messageContent, setMessageContent] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const { id } = useParams();
+  const [userInput, setUserInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [dreamInterpretation, setDreamInterpretation] = useState("");
+  const [chatHistory, setChatHistory] = useState<{
+    questions: string[];
+    answers: string[];
+  }>({ questions: [], answers: [] });
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  const { getInterpretation, askFollowUpQuestion } = useOpenAIAssistant();
 
   useEffect(() => {
-    // Scroll to the bottom of the chat on message updates
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    if (id) {
+      fetchDreamData();
     }
-  }, [currentSession?.messages]);
+  }, [id]);
 
-  const handleSendMessage = async () => {
-    if (!messageContent.trim() || isLoading) return;
-    
-    setError(null);
-    
+  useEffect(() => {
+    // Scroll to bottom when chat history updates
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector(
+        '[data-radix-scroll-area-viewport=""]'
+      ) as HTMLDivElement;
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  }, [chatHistory]);
+
+  const fetchDreamData = async () => {
+    if (!id) return;
+
+    setIsLoading(true);
     try {
-      // Since we're following a strict question-answer protocol,
-      // we'll always use submitAnswer
-      await submitAnswer(messageContent);
-      setMessageContent("");
-    } catch (err) {
-      console.error("Error in chat:", err);
-      setError("Failed to process your message. Please try again.");
+      const { data: dream, error } = await supabase
+        .from("dreams")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching dream:", error);
+        toast({
+          title: "Error fetching dream",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (dream) {
+        setDreamInterpretation(dream.interpretation || "");
+        
+        // Load chat history if available
+        const questions = Array.isArray(dream.questions) ? dream.questions : [];
+        const answers = Array.isArray(dream.answers) ? dream.answers : [];
+        
+        setChatHistory({
+          questions,
+          answers,
+        });
+
+        // If no interpretation yet, fetch one
+        if (!dream.interpretation) {
+          handleInitialInterpretation(dream.dream_text);
+        }
+      }
+    } catch (error) {
+      console.error("Error in fetchDreamData:", error);
+      toast({
+        title: "An error occurred",
+        description: "Could not fetch dream data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Check if the latest message is the final interpretation
-  const isFinalInterpretation = () => {
-    if (!currentSession) return false;
-    
-    // The final interpretation is when we have completed all 3 questions
-    return currentSession.currentQuestion > 3 &&
-           currentSession.messages[currentSession.messages.length - 1].sender === 'ai';
-  };
+  const handleInitialInterpretation = async (dreamText: string) => {
+    setIsLoading(true);
+    try {
+      const interpretation = await getInterpretation(dreamText);
+      setDreamInterpretation(interpretation);
 
-  // Check if a message contains a Quranic verse (for styling)
-  const containsQuranVerse = (content: string) => {
-    // This is a simple check - you might want to implement a more sophisticated detection
-    return content.includes('Quran') || content.includes('Qur\'an') || content.includes('verse') || 
-           content.includes('surah') || content.includes('ayah') || 
-           // Add Arabic text detection
-           /[\u0600-\u06FF]/.test(content);
-  };
+      // Save the interpretation to the database
+      const { error } = await supabase
+        .from("dreams")
+        .update({ interpretation })
+        .eq("id", id);
 
-  // Function to enhance message display
-  const renderMessageContent = (message: Message) => {
-    if (message.sender !== 'ai') {
-      return <p>{message.content}</p>;
+      if (error) {
+        console.error("Error saving interpretation:", error);
+        toast({
+          title: "Error saving interpretation",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error getting interpretation:", error);
+      toast({
+        title: "Error interpreting dream",
+        description: "Failed to get dream interpretation",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    // For AI messages, check if it's the final interpretation
-    const isFinal = isFinalInterpretation() && 
-                   currentSession?.messages[currentSession.messages.length - 1].id === message.id;
-    
-    if (isFinal) {
-      // Split the content to find Quranic verses (both Arabic and English translations)
-      const parts = message.content.split(/(\bQuran\b|\bQur'an\b|\bverse\b|\bSurah\b|\bAyah\b|[\u0600-\u06FF]{10,})/i);
-      
-      return (
-        <div className="space-y-4">
-          {isFinal && <Badge className="mb-2">Final Interpretation</Badge>}
-          {parts.map((part, index) => {
-            // Check if this part likely contains Arabic text (Quranic verse)
-            const containsArabic = /[\u0600-\u06FF]{4,}/.test(part);
-            
-            if (containsArabic || (index > 0 && /(\bQuran\b|\bQur'an\b|\bverse\b|\bSurah\b|\bAyah\b)/i.test(parts[index-1]))) {
-              // This part likely contains a Quranic verse or Arabic text
-              return (
-                <blockquote key={index} className="pl-4 border-l-4 border-primary italic">
-                  {containsArabic && <p className="font-bold text-right my-2 text-lg">{part}</p>}
-                  {!containsArabic && <p>{part}</p>}
-                </blockquote>
-              );
-            }
-            return <p key={index}>{part}</p>;
-          })}
-        </div>
+  };
+
+  const handleSubmitQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userInput.trim() || !id) return;
+
+    const question = userInput.trim();
+    setUserInput("");
+    setIsLoading(true);
+
+    // Update local state immediately for better UX
+    const updatedQuestions = [...chatHistory.questions, question];
+    setChatHistory((prev) => ({
+      ...prev,
+      questions: updatedQuestions,
+    }));
+
+    try {
+      const answer = await askFollowUpQuestion(
+        question,
+        dreamInterpretation,
+        chatHistory
       );
-    }
-    
-    // For regular AI messages (questions)
-    return <p>{message.content}</p>;
-  };
 
-  // Determine the button text based on the current state
-  const getButtonText = () => {
-    if (!currentSession) return "Send";
-    
-    if (currentSession.currentQuestion <= 3) {
-      return `Answer Question ${currentSession.currentQuestion}`;
-    } else {
-      return "Send";
+      // Update full chat history
+      const updatedAnswers = [...chatHistory.answers, answer];
+      const newChatHistory = {
+        questions: updatedQuestions,
+        answers: updatedAnswers,
+      };
+      
+      setChatHistory(newChatHistory);
+
+      // Save to database
+      const { error } = await supabase
+        .from("dreams")
+        .update({
+          questions: updatedQuestions,
+          answers: updatedAnswers,
+        })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Error saving chat history:", error);
+        toast({
+          title: "Error saving question",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error asking follow-up question:", error);
+      toast({
+        title: "Error",
+        description: "Failed to get answer",
+        variant: "destructive",
+      });
+
+      // Remove the question from the local state if it failed
+      setChatHistory((prev) => ({
+        ...prev,
+        questions: prev.questions.slice(0, -1),
+      }));
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  if (!currentSession) {
-    return (
-      <Card className="max-w-4xl mx-auto">
-        <CardHeader>
-          <CardTitle>Dream Interpretation (AI Assistant)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center items-center py-16">
-            <div className="text-center">
-              <div className="mb-4">
-                <div className="w-12 h-12 mx-auto rounded-full bg-primary/20 flex items-center justify-center">
-                  <AlertCircle className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-              <h3 className="text-lg font-medium mb-2">No Active Session</h3>
-              <p className="text-muted-foreground max-w-md">
-                Please submit a dream from the home page to start an interpretation session.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
-    <Card className="max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>Dream Interpretation (AI Assistant)</CardTitle>
-        {currentSession && currentSession.currentQuestion <= 3 && (
-          <div className="text-sm text-muted-foreground mt-1">
-            Question {currentSession.currentQuestion} of 3
-          </div>
-        )}
-      </CardHeader>
-      <CardContent>
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        <div className="space-y-4" style={{ maxHeight: '500px', overflowY: 'auto' }} ref={chatContainerRef}>
-          {currentSession?.messages.map((message: Message) => (
-            <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className="flex items-start space-x-2 max-w-[80%]">
-                {message.sender === 'ai' && (
-                  <Avatar className="w-8 h-8 mt-1">
-                    <img src="/ai_avatar.png" alt="AI Avatar" />
-                  </Avatar>
-                )}
-                <div className={`rounded-lg p-3 text-sm ${
-                  message.sender === 'user' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-secondary text-secondary-foreground'
-                } ${
-                  isFinalInterpretation() && message === currentSession.messages[currentSession.messages.length - 1]
-                    ? 'border-2 border-primary'
-                    : ''
-                }`}>
-                  {renderMessageContent(message)}
-                </div>
-                {message.sender === 'user' && (
-                  <Avatar className="w-8 h-8 mt-1">
-                    {user?.email ? user.email[0].toUpperCase() : 'U'}
-                  </Avatar>
-                )}
-              </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="flex items-center space-x-2">
-                <Avatar className="w-8 h-8">
-                  <img src="/ai_avatar.png" alt="AI Avatar" />
+    <div className="flex flex-col h-full">
+      <div className="flex-grow overflow-hidden" ref={scrollAreaRef}>
+        <ScrollArea className="h-full pr-4">
+          {dreamInterpretation && (
+            <div className="mb-6">
+              <div className="flex items-start mb-2">
+                <Avatar className="h-8 w-8 mr-2">
+                  <img src={aiAvatar} alt="AI" className="h-full w-full object-cover" />
                 </Avatar>
-                <div className="rounded-lg p-3 text-sm bg-secondary text-secondary-foreground">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '600ms' }}></div>
-                    <span className="ml-2">Thinking...</span>
-                  </div>
+                <div className="bg-primary/10 p-3 rounded-lg max-w-[80%]">
+                  <p className="text-sm whitespace-pre-wrap">{dreamInterpretation}</p>
                 </div>
               </div>
             </div>
           )}
-        </div>
-      </CardContent>
-      <CardFooter className="flex-col space-y-4">
-        <div className="w-full flex items-center space-x-4">
+
+          {chatHistory.questions.map((question, index) => (
+            <div key={index} className="mb-6">
+              <div className="flex items-start justify-end mb-2">
+                <div className="bg-primary p-3 rounded-lg text-primary-foreground max-w-[80%]">
+                  <p className="text-sm">{question}</p>
+                </div>
+                <Avatar className="h-8 w-8 ml-2">
+                  <div className="h-full w-full bg-muted flex items-center justify-center rounded-full">
+                    <span className="text-xs">You</span>
+                  </div>
+                </Avatar>
+              </div>
+
+              {index < chatHistory.answers.length && (
+                <div className="flex items-start mb-2">
+                  <Avatar className="h-8 w-8 mr-2">
+                    <img src={aiAvatar} alt="AI" className="h-full w-full object-cover" />
+                  </Avatar>
+                  <div className="bg-primary/10 p-3 rounded-lg max-w-[80%]">
+                    <p className="text-sm whitespace-pre-wrap">{chatHistory.answers[index]}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {isLoading && (
+            <div className="flex justify-center items-center py-10">
+              <LoadingAnimation />
+            </div>
+          )}
+        </ScrollArea>
+      </div>
+
+      <form onSubmit={handleSubmitQuestion} className="mt-4">
+        <div className="flex gap-2">
           <Textarea
-            placeholder={currentSession?.currentQuestion <= 3 
-              ? `Type your answer to question ${currentSession?.currentQuestion}...` 
-              : "Type your message here..."}
-            value={messageContent}
-            onChange={(e) => setMessageContent(e.target.value)}
-            className="flex-grow"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            disabled={isLoading || (currentSession && currentSession.isComplete)}
+            placeholder="Ask a follow-up question about your dream..."
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+            className="resize-none"
+            disabled={isLoading}
           />
-          <Button 
-            onClick={handleSendMessage} 
-            disabled={isLoading || !messageContent.trim() || (currentSession && currentSession.isComplete)}
-          >
-            {getButtonText()}
+          <Button type="submit" disabled={isLoading || !userInput.trim()}>
+            Send
           </Button>
         </div>
-        {currentSession && isFinalInterpretation() && (
-          <div className="w-full p-3 bg-muted rounded-md">
-            <p className="text-sm font-medium">Your dream interpretation is complete!</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              This interpretation includes a relevant Qur'anic verse and spiritual advice based on your dream description
-              and your answers to our questions.
-            </p>
-          </div>
-        )}
-        <p className="text-xs text-muted-foreground w-full text-center">
-          Powered by OpenAI GPT Assistant for Islamic dream interpretation
-        </p>
-      </CardFooter>
-    </Card>
+      </form>
+    </div>
   );
 };
 

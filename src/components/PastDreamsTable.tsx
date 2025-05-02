@@ -1,9 +1,6 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useLanguage } from "@/context/LanguageContext";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -12,145 +9,202 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { format } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/context/AuthContext";
-import { Dream } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import LoadingAnimation from "./LoadingAnimation";
 
-const PastDreamsTable: React.FC = () => {
-  const { t } = useLanguage();
+type Dream = {
+  id: string;
+  dream_text: string;
+  created_at: string;
+  status: string;
+  interpretation: string | null;
+  questions: string[] | null;
+  answers: string[] | null;
+};
+
+const formatDate = (dateString: string) => {
+  try {
+    return format(new Date(dateString), "MMM d, yyyy");
+  } catch (error) {
+    console.error("Date formatting error:", error);
+    return dateString;
+  }
+};
+
+const getStatusBadgeVariant = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case "pending":
+      return "outline";
+    case "interpreted":
+      return "secondary";
+    case "discussed":
+      return "default";
+    default:
+      return "outline";
+  }
+};
+
+const PastDreamsTable = () => {
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchDreams = async () => {
-      if (!user) return;
-      
       try {
+        setLoading(true);
+
+        // First check if the user is logged in
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session?.user) {
+          console.log("No authenticated user");
+          setLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase
-          .from('dreams')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+          .from("dreams")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching dreams:", error);
+        } else {
+          // Update status based on interpretation and chat history
+          const processedDreams = data.map((dream: Dream) => {
+            let status = dream.status || "pending";
+            
+            // If there's an interpretation but status is still pending, update it
+            if (dream.interpretation && (!status || status === "pending")) {
+              status = "interpreted";
+            }
+            
+            // If there are questions and answers, consider it discussed
+            if (
+              Array.isArray(dream.questions) && 
+              dream.questions.length > 0 && 
+              Array.isArray(dream.answers) && 
+              dream.answers.length > 0
+            ) {
+              status = "discussed";
+            }
+            
+            return {
+              ...dream,
+              status,
+            };
+          });
           
-        if (error) throw error;
-        
-        console.log("Dreams fetched from database:", data);
-        setDreams(data || []);
+          setDreams(processedDreams);
+        }
       } catch (error) {
-        console.error("Error fetching dreams:", error);
+        console.error("Error in fetchDreams:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchDreams();
-  }, [user]);
+    
+    // Subscribe to changes in the dreams table
+    const dreamsSubscription = supabase
+      .channel('dreams_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'dreams' }, 
+        fetchDreams
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(dreamsSubscription);
+    };
+  }, []);
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("pastDreams")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center items-center h-64">
+        <LoadingAnimation />
+      </div>
     );
   }
 
-  if (!dreams.length) {
+  if (dreams.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("pastDreams")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-center text-muted-foreground py-8">
-            {t("noHistoryYet")}
-          </p>
-        </CardContent>
-      </Card>
+      <div className="text-center py-10">
+        <p className="text-muted-foreground mb-4">
+          You haven't recorded any dreams yet.
+        </p>
+        <Button onClick={() => navigate("/dreams/new")}>Record a Dream</Button>
+      </div>
     );
   }
+
+  const truncateText = (text: string, maxLength: number = 100) => {
+    if (text && text.length > maxLength) {
+      return `${text.substring(0, maxLength)}...`;
+    }
+    return text || "";
+  };
+
+  const getStatusText = (dream: Dream) => {
+    if (!dream.status || dream.status === "pending") {
+      return "Pending";
+    }
+    
+    if (
+      Array.isArray(dream.questions) && 
+      dream.questions.length > 0 && 
+      Array.isArray(dream.answers) && 
+      dream.answers.length > 0
+    ) {
+      return `Discussed (${dream.questions.length} Q&A)`;
+    }
+    
+    if (dream.interpretation) {
+      return "Interpreted";
+    }
+    
+    return dream.status.charAt(0).toUpperCase() + dream.status.slice(1);
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("pastDreams")}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Dream</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Plan</TableHead>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Date</TableHead>
+            <TableHead className="w-[50%]">Dream</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {dreams.map((dream) => (
+            <TableRow key={dream.id}>
+              <TableCell>{formatDate(dream.created_at)}</TableCell>
+              <TableCell>{truncateText(dream.dream_text)}</TableCell>
+              <TableCell>
+                <Badge variant={getStatusBadgeVariant(dream.status || "pending")}>
+                  {getStatusText(dream)}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/dreams/${dream.id}`)}
+                >
+                  View
+                </Button>
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {dreams.map((dream) => {
-              // Determine status based on both interpretation and status fields
-              let status = "draft";
-              if (dream.interpretation) {
-                status = "submitted";
-              } else if (dream.status === "interpreting") {
-                status = "in progress";
-              } else if (dream.status === "completed") {
-                status = "submitted";
-              }
-              
-              // Determine badge style based on status
-              const badgeVariant = status === "submitted" ? "success" : 
-                                  status === "in progress" ? "outline" : "outline";
-              const badgeClass = status === "submitted" ? "bg-green-600" : 
-                                status === "in progress" ? "bg-amber-500 text-white" : "bg-amber-500 text-white";
-              
-              // Determine plan based on the status field or other logic
-              const plan = dream.status === "paid" ? "Paid" : "Free";
-              
-              return (
-                <TableRow key={dream.id} className="cursor-pointer" onClick={() => navigate(`/dreams/${dream.id}`)}>
-                  <TableCell>
-                    {format(new Date(dream.created_at), "MMM d, yyyy")}
-                  </TableCell>
-                  <TableCell className="max-w-[300px] truncate">
-                    {dream.dream_text}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={badgeVariant as any} className={badgeClass}>
-                      {status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/dreams/${dream.id}`);
-                      }}
-                    >
-                      {plan}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 

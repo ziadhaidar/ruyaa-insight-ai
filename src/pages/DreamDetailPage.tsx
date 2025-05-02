@@ -113,7 +113,7 @@ const DreamDetailPage: React.FC = () => {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
-        <Card className="mb-6">
+        <Card className="mb-6 bg-white/70">
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
               <div className="flex items-center gap-2">

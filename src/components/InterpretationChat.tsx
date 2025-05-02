@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Avatar } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import { useDream } from "@/context/DreamContext";
 
 const InterpretationChat = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [dreamText, setDreamText] = useState("");
@@ -22,6 +23,7 @@ const InterpretationChat = () => {
     questions: string[];
     answers: string[];
   }>({ questions: [], answers: [] });
+  const [isInterpretationComplete, setIsInterpretationComplete] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { 
@@ -86,7 +88,12 @@ const InterpretationChat = () => {
 
       if (dream) {
         setDreamText(dream.dream_text || "");
-        setDreamInterpretation(dream.interpretation || "");
+        
+        // If there's an interpretation, mark the session as complete
+        if (dream.interpretation) {
+          setDreamInterpretation(dream.interpretation);
+          setIsInterpretationComplete(true);
+        }
         
         // Load chat history if available
         const questions = Array.isArray(dream.questions) ? dream.questions : [];
@@ -204,7 +211,7 @@ const InterpretationChat = () => {
 
   const handleSubmitQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userInput.trim() || !threadId) return;
+    if (!userInput.trim() || !threadId || isInterpretationComplete) return;
 
     const question = userInput.trim();
     setUserInput("");
@@ -240,6 +247,7 @@ const InterpretationChat = () => {
       // If this is the final interpretation (after question 3), set it as the dream interpretation
       if (nextQuestionNumber > 3) {
         setDreamInterpretation(assistantResponse);
+        setIsInterpretationComplete(true);
       }
 
       // Save to database
@@ -367,19 +375,36 @@ const InterpretationChat = () => {
               <LoadingAnimation />
             </div>
           )}
+          
+          {isInterpretationComplete && (
+            <div className="flex justify-center mt-8 mb-4">
+              <Button 
+                onClick={() => navigate("/dreams")}
+                variant="outline" 
+                className="islamic-gradient-btn"
+              >
+                See My Past Dreams
+              </Button>
+            </div>
+          )}
         </ScrollArea>
       </div>
 
       <form onSubmit={handleSubmitQuestion} className="mt-4">
         <div className="flex gap-2">
           <Textarea
-            placeholder="Answer the question about your dream..."
+            placeholder={isInterpretationComplete 
+              ? "Interpretation complete" 
+              : "Answer the question about your dream..."}
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
             className="resize-none"
-            disabled={isLoading}
+            disabled={isLoading || isInterpretationComplete}
           />
-          <Button type="submit" disabled={isLoading || !userInput.trim()}>
+          <Button 
+            type="submit" 
+            disabled={isLoading || !userInput.trim() || isInterpretationComplete}
+          >
             Send
           </Button>
         </div>

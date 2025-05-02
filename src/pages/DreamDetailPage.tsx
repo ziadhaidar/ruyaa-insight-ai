@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -10,6 +11,9 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import Layout from "@/components/Layout";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Avatar } from "@/components/ui/avatar";
+import aiAvatar from "/ai_avatar.png";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const DreamDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -101,6 +105,11 @@ const DreamDetailPage: React.FC = () => {
     status = "completed";
   }
 
+  // Check if we have conversation data
+  const hasConversation = Array.isArray(dream.questions) && 
+                         Array.isArray(dream.answers) && 
+                         dream.questions.length > 0;
+
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
@@ -133,9 +142,48 @@ const DreamDetailPage: React.FC = () => {
               <div>
                 <h3 className="text-lg font-semibold mb-2">Interpretation</h3>
                 <div className="p-4 bg-primary/10 rounded-md">
-                  <p>{dream.interpretation}</p>
+                  <p className="whitespace-pre-wrap">{dream.interpretation}</p>
                 </div>
               </div>
+            )}
+
+            {hasConversation && (
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="conversation">
+                  <AccordionTrigger className="text-lg font-semibold">
+                    View Conversation
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4 mt-2">
+                      {dream.questions.map((question, index) => (
+                        <div key={index} className="border rounded-md p-4">
+                          <div className="flex items-start mb-4">
+                            <Avatar className="h-8 w-8 mr-2">
+                              <img src={aiAvatar} alt="AI" className="h-full w-full object-cover" />
+                            </Avatar>
+                            <div className="bg-primary/10 p-3 rounded-lg max-w-[80%]">
+                              <p className="text-sm whitespace-pre-wrap">{question}</p>
+                            </div>
+                          </div>
+
+                          {index < (dream.answers?.length || 0) && (
+                            <div className="flex items-start justify-end">
+                              <div className="bg-primary p-3 rounded-lg text-primary-foreground max-w-[80%]">
+                                <p className="text-sm">{dream.answers[index]}</p>
+                              </div>
+                              <Avatar className="h-8 w-8 ml-2">
+                                <div className="h-full w-full bg-muted flex items-center justify-center rounded-full">
+                                  <span className="text-xs">You</span>
+                                </div>
+                              </Avatar>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             )}
 
             {!dream.interpretation && (

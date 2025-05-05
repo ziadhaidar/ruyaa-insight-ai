@@ -16,25 +16,41 @@ serve(async (req) => {
   try {
     // Parse the request body
     const { priceId } = await req.json();
+    
+    console.log("Create checkout called with priceId:", priceId);
+
+    // Make sure we have a price ID
+    if (!priceId) {
+      throw new Error("No price ID provided");
+    }
 
     // Initialize Stripe with the secret key from environment variables
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) {
+      throw new Error("STRIPE_SECRET_KEY is not set in environment variables");
+    }
+    
+    const stripe = new Stripe(stripeKey, {
       apiVersion: "2023-10-16",
     });
+    
+    console.log("Creating Stripe checkout session");
 
     // Create a Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
         {
-          price: priceId || "price_1RIWaECAL5p9VD6oP4MZBPRt", // Default to the provided price ID
+          price: priceId,
           quantity: 1,
         },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/interpretation`,
+      success_url: `${req.headers.get("origin")}/payment?payment_success=true`,
       cancel_url: `${req.headers.get("origin")}/payment`,
     });
+    
+    console.log("Checkout session created:", session.id);
 
     // Return the checkout URL
     return new Response(

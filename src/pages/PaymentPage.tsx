@@ -26,6 +26,8 @@ const PaymentPage: React.FC = () => {
         });
         
         try {
+          console.log("Processing dream interpretation after successful payment");
+          
           // Process the dream interpretation
           await processDreamInterpretation();
           

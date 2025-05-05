@@ -57,6 +57,8 @@ const PaymentForm: React.FC = () => {
           description: "You'll be redirected to our secure payment page",
         });
         
+        console.log("Creating checkout session with price ID:", option?.priceId);
+        
         // Call the Supabase Edge Function to create a checkout session
         const { data, error } = await supabase.functions.invoke("create-checkout", {
           body: { 
@@ -65,13 +67,16 @@ const PaymentForm: React.FC = () => {
         });
 
         if (error) {
+          console.error("Error creating checkout session:", error);
           throw new Error(`Error creating checkout session: ${error.message}`);
         }
 
         if (data && data.url) {
+          console.log("Received checkout URL:", data.url);
           // Redirect to Stripe Checkout
           window.location.href = data.url;
         } else {
+          console.error("No checkout URL returned:", data);
           throw new Error("No checkout URL returned");
         }
       }

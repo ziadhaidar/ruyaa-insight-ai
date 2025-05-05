@@ -7,10 +7,11 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { useDream } from "@/context/DreamContext";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const PaymentOptions = [
   { id: "free", name: "Free Interpretation", price: 0, currency: "USD" },
-  { id: "premium", name: "Premium Interpretation", price: 5, currency: "USD" },
+  { id: "premium", name: "Premium Interpretation", price: 5, currency: "USD", priceId: "price_1RIWaECAL5p9VD6oP4MZBPRt" },
 ];
 
 const PaymentForm: React.FC = () => {
@@ -48,30 +49,39 @@ const PaymentForm: React.FC = () => {
         // Navigate to interpretation page
         navigate("/interpretation");
       } else {
-        // In a real app, you'd call your payment processor here
-        // For this demo, we'll simulate a payment
-        setTimeout(() => {
-          // Simulate successful payment
-          toast({
-            title: "Payment successful",
-            description: "Your dream is being processed for interpretation",
-          });
+        // For premium plan, create a Stripe checkout session
+        const option = PaymentOptions.find(opt => opt.id === selectedOption);
+        
+        toast({
+          title: "Redirecting to payment",
+          description: "You'll be redirected to our secure payment page",
+        });
+        
+        // Call the Supabase Edge Function to create a checkout session
+        const { data, error } = await supabase.functions.invoke("create-checkout", {
+          body: { 
+            priceId: option?.priceId
+          }
+        });
 
-          // Start processing the dream interpretation
-          processDreamInterpretation();
-          
-          // Navigate to interpretation page
-          navigate("/interpretation");
-        }, 2000);
+        if (error) {
+          throw new Error(`Error creating checkout session: ${error.message}`);
+        }
+
+        if (data && data.url) {
+          // Redirect to Stripe Checkout
+          window.location.href = data.url;
+        } else {
+          throw new Error("No checkout URL returned");
+        }
       }
     } catch (error) {
-      console.error("Error processing dream:", error);
+      console.error("Error processing payment:", error);
       toast({
-        title: "Error",
-        description: "Couldn't process your dream interpretation, please try again later.",
+        title: "Payment Error",
+        description: error.message || "Couldn't process your payment, please try again later.",
         variant: "destructive"
       });
-    } finally {
       setIsProcessing(false);
     }
   };

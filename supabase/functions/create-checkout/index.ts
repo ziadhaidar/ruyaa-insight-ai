@@ -36,6 +36,9 @@ serve(async (req) => {
     
     console.log("Creating Stripe checkout session");
 
+    // Get the origin for proper redirect URLs
+    const origin = req.headers.get("origin") || "https://nour-al-ruyaa.vercel.app";
+    
     // Create a Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -46,11 +49,12 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/payment?payment_success=true`,
-      cancel_url: `${req.headers.get("origin")}/payment`,
+      success_url: `${origin}/payment?payment_success=true`,
+      cancel_url: `${origin}/payment`,
     });
     
     console.log("Checkout session created:", session.id);
+    console.log("Success URL set to:", `${origin}/payment?payment_success=true`);
 
     // Return the checkout URL
     return new Response(

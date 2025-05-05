@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { DreamProvider } from "@/context/DreamContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -75,8 +74,6 @@ const ProtectedRoute = ({ children, requireProfile = true }: { children: React.R
 };
 
 // Route restoration component to handle session rehydration
-import { useRef } from "react"; // Add this at the top if not already imported
-
 const RouteRestorer = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();

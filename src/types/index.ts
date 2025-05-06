@@ -55,6 +55,7 @@ export interface Database {
           answers: any[] | null;
           interpretation: string | null;
           created_at: string;
+          status: string | null;
         };
         Insert: {
           id?: string;
@@ -64,6 +65,7 @@ export interface Database {
           answers?: any[] | null;
           interpretation?: string | null;
           created_at?: string;
+          status?: string | null;
         };
         Update: {
           id?: string;
@@ -73,6 +75,48 @@ export interface Database {
           answers?: any[] | null;
           interpretation?: string | null;
           created_at?: string;
+          status?: string | null;
+        };
+      };
+      profiles: {
+        Row: {
+          id: string;
+          full_name: string | null;
+          country: string | null;
+          age: number | null;
+          gender: string | null;
+          marital_status: string | null;
+          has_kids: boolean | null;
+          has_pets: boolean | null;
+          work_status: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id: string;
+          full_name?: string | null;
+          country?: string | null;
+          age?: number | null;
+          gender?: string | null;
+          marital_status?: string | null;
+          has_kids?: boolean | null;
+          has_pets?: boolean | null;
+          work_status?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          full_name?: string | null;
+          country?: string | null;
+          age?: number | null;
+          gender?: string | null;
+          marital_status?: string | null;
+          has_kids?: boolean | null;
+          has_pets?: boolean | null;
+          work_status?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
       };
     };

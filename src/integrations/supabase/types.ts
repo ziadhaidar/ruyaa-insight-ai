@@ -45,7 +45,9 @@ export type Database = {
       profiles: {
         Row: {
           age: number | null
+          country: string | null
           created_at: string | null
+          full_name: string | null
           gender: string | null
           has_kids: boolean | null
           has_pets: boolean | null
@@ -56,7 +58,9 @@ export type Database = {
         }
         Insert: {
           age?: number | null
+          country?: string | null
           created_at?: string | null
+          full_name?: string | null
           gender?: string | null
           has_kids?: boolean | null
           has_pets?: boolean | null
@@ -67,7 +71,9 @@ export type Database = {
         }
         Update: {
           age?: number | null
+          country?: string | null
           created_at?: string | null
+          full_name?: string | null
           gender?: string | null
           has_kids?: boolean | null
           has_pets?: boolean | null

@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
 import { Trash2 } from "lucide-react";
 import LoadingAnimation from "./LoadingAnimation";
+import { useAuth } from "@/context/AuthContext";
 
 type Dream = {
   id: string;
@@ -56,123 +57,115 @@ const PastDreamsTable = () => {
   const [allSelected, setAllSelected] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Count selected dreams
   const selectedCount = Object.values(selectedDreams).filter(Boolean).length;
 
   useEffect(() => {
-    const fetchDreams = async () => {
-      try {
-        setLoading(true);
-
-        // First check if the user is logged in
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session?.user) {
-          console.log("No authenticated user");
-          setLoading(false);
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from("dreams")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          console.error("Error fetching dreams:", error);
-        } else {
-          // Process dreams and filter out duplicates or incomplete dreams
-          const processedDreams = processAndFilterDreams(data);
-          setDreams(processedDreams);
-        }
-      } catch (error) {
-        console.error("Error in fetchDreams:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Process dreams to filter out duplicates and update status
-    const processAndFilterDreams = (data: Dream[]) => {
-      // Group dreams by their text to identify duplicates
-      const dreamsByText: Record<string, Dream[]> = {};
-      
-      data.forEach((dream) => {
-        const key = dream.dream_text.trim();
-        if (!dreamsByText[key]) {
-          dreamsByText[key] = [];
-        }
-        dreamsByText[key].push(dream);
-      });
-      
-      // For each set of duplicate dreams, keep only the most complete one
-      const filteredDreams: Dream[] = [];
-      
-      Object.values(dreamsByText).forEach(duplicates => {
-        // Sort by "completeness" - prioritize dreams with interpretations and Q&A
-        const sorted = duplicates.sort((a, b) => {
-          // Completed dreams get highest priority
-          if (a.interpretation && !b.interpretation) return -1;
-          if (!a.interpretation && b.interpretation) return 1;
-          
-          // If both have interpretations, prioritize the one with more Q&A
-          if (a.interpretation && b.interpretation) {
-            const aQCount = Array.isArray(a.questions) ? a.questions.length : 0;
-            const bQCount = Array.isArray(b.questions) ? b.questions.length : 0;
-            return bQCount - aQCount; // Higher count first
-          }
-          
-          // If neither has interpretations, prioritize by creation date (newer first)
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        });
-        
-        // Add only the most complete version
-        if (sorted.length > 0) {
-          filteredDreams.push(sorted[0]);
-        }
-      });
-      
-      // Update status based on interpretation and chat history
-      return filteredDreams.map((dream: Dream) => {
-        let status = dream.status || "pending";
-        
-        // If there's an interpretation but status is still pending, update it
-        if (dream.interpretation && (!status || status === "pending")) {
-          status = "interpreted";
-        }
-        
-        // If there are questions and answers, consider it discussed
-        if (
-          Array.isArray(dream.questions) && 
-          dream.questions.length > 0 && 
-          Array.isArray(dream.answers) && 
-          dream.answers.length > 0
-        ) {
-          status = "discussed";
-        }
-        
-        return {
-          ...dream,
-          status,
-        };
-      });
-    };
-
     fetchDreams();
-    
-    // Subscribe to changes in the dreams table
-    const dreamsSubscription = supabase
-      .channel('dreams_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'dreams' }, 
-        fetchDreams
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(dreamsSubscription);
-    };
   }, []);
+
+  const fetchDreams = async () => {
+    try {
+      setLoading(true);
+
+      // First check if the user is logged in
+      if (!user) {
+        console.log("No authenticated user");
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("dreams")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching dreams:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load your dreams. Please try again.",
+          variant: "destructive"
+        });
+      } else {
+        // Process dreams and filter out duplicates or incomplete dreams
+        const processedDreams = processAndFilterDreams(data || []);
+        setDreams(processedDreams);
+      }
+    } catch (error) {
+      console.error("Error in fetchDreams:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Process dreams to filter out duplicates and update status
+  const processAndFilterDreams = (data: Dream[]) => {
+    // Group dreams by their text to identify duplicates
+    const dreamsByText: Record<string, Dream[]> = {};
+    
+    data.forEach((dream) => {
+      const key = dream.dream_text.trim();
+      if (!dreamsByText[key]) {
+        dreamsByText[key] = [];
+      }
+      dreamsByText[key].push(dream);
+    });
+    
+    // For each set of duplicate dreams, keep only the most complete one
+    const filteredDreams: Dream[] = [];
+    
+    Object.values(dreamsByText).forEach(duplicates => {
+      // Sort by "completeness" - prioritize dreams with interpretations and Q&A
+      const sorted = duplicates.sort((a, b) => {
+        // Completed dreams get highest priority
+        if (a.interpretation && !b.interpretation) return -1;
+        if (!a.interpretation && b.interpretation) return 1;
+        
+        // If both have interpretations, prioritize the one with more Q&A
+        if (a.interpretation && b.interpretation) {
+          const aQCount = Array.isArray(a.questions) ? a.questions.length : 0;
+          const bQCount = Array.isArray(b.questions) ? b.questions.length : 0;
+          return bQCount - aQCount; // Higher count first
+        }
+        
+        // If neither has interpretations, prioritize by creation date (newer first)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+      
+      // Add only the most complete version
+      if (sorted.length > 0) {
+        filteredDreams.push(sorted[0]);
+      }
+    });
+    
+    // Update status based on interpretation and chat history
+    return filteredDreams.map((dream: Dream) => {
+      let status = dream.status || "pending";
+      
+      // If there's an interpretation but status is still pending, update it
+      if (dream.interpretation && (!status || status === "pending")) {
+        status = "interpreted";
+      }
+      
+      // If there are questions and answers, consider it discussed
+      if (
+        Array.isArray(dream.questions) && 
+        dream.questions.length > 0 && 
+        Array.isArray(dream.answers) && 
+        dream.answers.length > 0
+      ) {
+        status = "discussed";
+      }
+      
+      return {
+        ...dream,
+        status,
+      };
+    });
+  };
 
   // Toggle selection of a single dream
   const toggleDreamSelection = (id: string) => {
@@ -213,6 +206,7 @@ const PastDreamsTable = () => {
       }
 
       setLoading(true);
+      
       const { error } = await supabase
         .from('dreams')
         .delete()
@@ -222,6 +216,9 @@ const PastDreamsTable = () => {
         throw error;
       }
 
+      // Update local state to remove deleted dreams
+      setDreams(prevDreams => prevDreams.filter(dream => !ids.includes(dream.id)));
+      
       toast({
         title: "Dreams deleted",
         description: `Successfully deleted ${ids.length} dream${ids.length !== 1 ? 's' : ''}.`
@@ -251,6 +248,7 @@ const PastDreamsTable = () => {
       }
 
       setLoading(true);
+      
       const { error } = await supabase
         .from('dreams')
         .delete()
@@ -259,6 +257,9 @@ const PastDreamsTable = () => {
       if (error) {
         throw error;
       }
+      
+      // Update local state to remove the deleted dream
+      setDreams(prevDreams => prevDreams.filter(dream => dream.id !== id));
 
       toast({
         title: "Dream deleted",
@@ -290,7 +291,7 @@ const PastDreamsTable = () => {
         <p className="text-muted-foreground mb-4">
           You haven't recorded any dreams yet.
         </p>
-        <Button onClick={() => navigate("/dreams/new")}>Record a Dream</Button>
+        <Button onClick={() => navigate("/home")}>Record a Dream</Button>
       </div>
     );
   }

@@ -53,4 +53,8 @@ CREATE POLICY "No anonymous access"
 ON public.profiles
 FOR ALL
 USING (auth.role() <> 'anon');
+
+-- Add full_name and country columns to profiles table
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS country TEXT;
 */

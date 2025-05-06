@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
@@ -24,8 +23,11 @@ import { useToast } from "@/components/ui/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { countries } from "@/lib/countries";
 
 const profileFormSchema = z.object({
+  fullName: z.string().optional(),
+  country: z.string().optional(),
   age: z.coerce.number().min(13, { message: "You must be at least 13 years old" }),
   gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
   maritalStatus: z.enum(["single", "married", "divorced", "widowed", "other"]),
@@ -41,10 +43,15 @@ const SettingsPage: React.FC = () => {
   const { user, refreshProfileStatus } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
+      fullName: "",
+      country: undefined,
       gender: undefined,
       maritalStatus: undefined,
       hasKids: undefined,
@@ -72,12 +79,19 @@ const SettingsPage: React.FC = () => {
 
         if (data) {
           // Set default values from existing profile
+          form.setValue('fullName', data.full_name || "");
+          form.setValue('country', data.country || undefined);
           form.setValue('age', data.age || undefined);
           form.setValue('gender', data.gender || undefined);
           form.setValue('maritalStatus', data.marital_status || undefined);
           form.setValue('hasKids', data.has_kids ? 'yes' : 'no');
           form.setValue('hasPets', data.has_pets ? 'yes' : 'no');
           form.setValue('workStatus', data.work_status || undefined);
+          
+          // Set email for password reset
+          if (user.email) {
+            setResetEmail(user.email);
+          }
         }
       } catch (error) {
         console.error("Error loading profile data:", error);
@@ -94,6 +108,8 @@ const SettingsPage: React.FC = () => {
     
     try {
       const { error } = await supabase.from('profiles').update({
+        full_name: values.fullName,
+        country: values.country,
         age: values.age,
         gender: values.gender,
         marital_status: values.maritalStatus,
@@ -124,6 +140,46 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!resetEmail || !resetEmail.includes('@')) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsResettingPassword(true);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      setResetEmailSent(true);
+      toast({
+        title: "Password reset email sent",
+        description: "Check your email for password reset instructions",
+      });
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      toast({
+        title: "Password reset failed",
+        description: error.message || "Failed to send password reset email",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -132,6 +188,7 @@ const SettingsPage: React.FC = () => {
         <Tabs defaultValue="profile">
           <TabsList className="mb-6">
             <TabsTrigger value="profile">My Profile</TabsTrigger>
+            <TabsTrigger value="security">Security</TabsTrigger>
             <TabsTrigger value="language">Language</TabsTrigger>
             <TabsTrigger value="support">Support</TabsTrigger>
           </TabsList>
@@ -147,6 +204,49 @@ const SettingsPage: React.FC = () => {
               <CardContent>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmitProfile)} className="space-y-6">
+                    <FormField
+                      control={form.control}
+                      name="fullName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="text" 
+                              placeholder="Your full name" 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="country"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Country</FormLabel>
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select your country" />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[200px]">
+                                {countries.map((country) => (
+                                  <SelectItem key={country.code} value={country.code}>
+                                    {country.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     <FormField
                       control={form.control}
                       name="age"
@@ -298,6 +398,56 @@ const SettingsPage: React.FC = () => {
                     </Button>
                   </form>
                 </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="security">
+            <Card>
+              <CardHeader>
+                <CardTitle>Password Reset</CardTitle>
+                <CardDescription>
+                  Reset your password if you've forgotten it
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {resetEmailSent ? (
+                  <div className="text-center py-4">
+                    <p className="mb-4">A password reset email has been sent to {resetEmail}.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Please check your inbox and follow the instructions to reset your password.
+                      If you don't see the email, please check your spam folder.
+                    </p>
+                    <Button 
+                      onClick={() => setResetEmailSent(false)} 
+                      variant="outline" 
+                      className="mt-4"
+                    >
+                      Send another reset email
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={handlePasswordReset} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email">Email Address</Label>
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="Your email address"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <Button 
+                      type="submit" 
+                      disabled={isResettingPassword}
+                      className="w-full"
+                    >
+                      {isResettingPassword ? "Sending..." : "Send Password Reset Email"}
+                    </Button>
+                  </form>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

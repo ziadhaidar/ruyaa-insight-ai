@@ -77,23 +77,39 @@ export const useDreamActions = (state: any) => {
       state.setCurrentSession(session);
       console.log("Session created with first question");
       
-      // Save dream to database - FIX: Don't provide the ID when inserting, let Supabase generate it
-      console.log("Saving dream to database");
-      const { error } = await supabase.from('dreams').insert({
-        user_id: state.user.id,
-        dream_text: state.currentDream.dream_text,
-        status: "interpreting"
-      });
+      // Check if dream already exists in the database
+      const { data: existingDreams, error: fetchError } = await supabase
+        .from('dreams')
+        .select('*')
+        .eq('id', state.currentDream.id);
+        
+      if (fetchError) {
+        console.error("Error checking if dream exists:", fetchError);
+      }
       
-      if (error) {
-        console.error("Error saving dream:", error);
-        toast({
-          title: "Warning",
-          description: "Your dream interpretation has started, but there was an issue saving it to your history.",
-          variant: "destructive"
+      // Only save if the dream doesn't already exist
+      if (!existingDreams || existingDreams.length === 0) {
+        console.log("Dream doesn't exist in database, saving...");
+        
+        // Save dream to database - FIX: Don't provide the ID when inserting, let Supabase generate it
+        const { error } = await supabase.from('dreams').insert({
+          user_id: state.user.id,
+          dream_text: state.currentDream.dream_text,
+          status: "interpreting"
         });
+        
+        if (error) {
+          console.error("Error saving dream:", error);
+          toast({
+            title: "Warning",
+            description: "Your dream interpretation has started, but there was an issue saving it to your history.",
+            variant: "destructive"
+          });
+        } else {
+          console.log("Dream saved to database successfully");
+        }
       } else {
-        console.log("Dream saved to database successfully");
+        console.log("Dream already exists in database, skipping save");
       }
       
     } catch (error: any) {

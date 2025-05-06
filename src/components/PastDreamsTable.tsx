@@ -314,7 +314,7 @@ const PastDreamsTable = () => {
       Array.isArray(dream.answers) && 
       dream.answers.length > 0
     ) {
-      return `Discussed (${dream.questions.length} Q&A)`;
+      return `Completed`;
     }
     
     if (dream.interpretation) {

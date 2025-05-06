@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import Layout from "@/components/Layout";
 import InterpretationChat from "@/components/InterpretationChat";
@@ -15,8 +14,8 @@ const InterpretationPage: React.FC = () => {
     localStorage.setItem('lastRoute', '/interpretation');
   }, []);
   
+  // Display information about the version update
   useEffect(() => {
-    // Display information about the version update
     toast({
       title: "OpenAI API Update",
       description: "This app now uses the latest version of OpenAI's Assistants API (v2).",
@@ -27,10 +26,18 @@ const InterpretationPage: React.FC = () => {
   return (
     <Layout>
       {currentSession ? (
-        <InterpretationChat />
+        <div className="bg-white/30 backdrop-blur-sm p-6 rounded-2xl shadow-lg max-w-3xl mx-auto w-full">
+          <InterpretationChat />
+        </div>
       ) : (
         <div className="h-[60vh] flex items-center justify-center">
-          <LoadingAnimation message={isLoading ? "Preparing dream interpretation..." : "Please submit a dream to begin interpretation"} />
+          <LoadingAnimation
+            message={
+              isLoading
+                ? "Preparing dream interpretation..."
+                : "Please submit a dream to begin interpretation"
+            }
+          />
         </div>
       )}
     </Layout>

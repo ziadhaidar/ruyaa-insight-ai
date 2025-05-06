@@ -9,11 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import ForgotPasswordForm from "@/components/ForgotPasswordForm";
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -49,63 +52,87 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="text-center">{t("login")}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">{t("email")}</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="your@email.com"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">{t("password")}</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="********"
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Loading..." : t("login")}
-          </Button>
-        </form>
+    <>
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle className="text-center">{t("login")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">{t("email")}</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="your@email.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">{t("password")}</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="********"
+              />
+              <div className="text-right">
+                <Button 
+                  variant="link" 
+                  type="button" 
+                  className="p-0 h-auto text-sm"
+                  onClick={() => setForgotPasswordOpen(true)}
+                >
+                  {t("forgotPassword") || "Forgot password?"}
+                </Button>
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Loading..." : t("login")}
+            </Button>
+          </form>
 
-        <div className="flex items-center my-4">
-          <Separator className="flex-grow" />
-          <span className="px-2 text-sm text-muted-foreground">OR</span>
-          <Separator className="flex-grow" />
-        </div>
+          <div className="flex items-center my-4">
+            <Separator className="flex-grow" />
+            <span className="px-2 text-sm text-muted-foreground">OR</span>
+            <Separator className="flex-grow" />
+          </div>
 
-        <Button 
-          type="button" 
-          variant="outline" 
-          className="w-full" 
-          onClick={handleGoogleLogin}
-        >
-          Continue with Google
-        </Button>
-      </CardContent>
-      <CardFooter>
-        <p className="text-center w-full">
-          {t("notMember")}{" "}
-          <Button variant="link" onClick={() => navigate("/register")}>
-            {t("register")}
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="w-full" 
+            onClick={handleGoogleLogin}
+          >
+            Continue with Google
           </Button>
-        </p>
-      </CardFooter>
-    </Card>
+        </CardContent>
+        <CardFooter>
+          <p className="text-center w-full">
+            {t("notMember")}{" "}
+            <Button variant="link" onClick={() => navigate("/register")}>
+              {t("register")}
+            </Button>
+          </p>
+        </CardFooter>
+      </Card>
+
+      <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("resetPassword") || "Reset Password"}</DialogTitle>
+            <DialogDescription>
+              {t("resetPasswordDescription") || "Enter your email to receive a password reset link."}
+            </DialogDescription>
+          </DialogHeader>
+          <ForgotPasswordForm onClose={() => setForgotPasswordOpen(false)} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

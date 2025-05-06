@@ -12,6 +12,7 @@ import { useEffect, useState, useRef } from "react";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import CompleteProfilePage from "./pages/CompleteProfilePage";
 import HomePage from "./pages/HomePage";
 import PaymentPage from "./pages/PaymentPage";
@@ -114,6 +115,7 @@ const AppRoutes = () => {
         <Route path="/" element={<LandingRedirect />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth" element={<Index />} />
         
         {/* Profile completion route (accessible only when logged in) */}

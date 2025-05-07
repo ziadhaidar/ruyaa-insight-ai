@@ -33,13 +33,16 @@ supabase.auth.admin = {
       // For now, we'll just sign out
       await supabase.auth.signOut();
       
-      // Return success response similar to what the real API would return
-      return { data: { success: true }, error: null };
+      // Return a response that matches the expected UserResponse type
+      return { 
+        data: { user: null }, 
+        error: null 
+      };
     } catch (err) {
       console.error('Error deleting user account:', err);
       return { 
-        data: null, 
-        error: { message: 'Failed to delete account. Please contact support.' } 
+        data: { user: null }, 
+        error: { name: 'AuthApiError', message: 'Failed to delete account. Please contact support.', status: 500 } 
       };
     }
   }

@@ -1,17 +1,15 @@
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { Menu, X, AlertCircle } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useState } from "react";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,19 +20,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
-  const [isTestMode, setIsTestMode] = useState(false);
-  const location = useLocation();
-
-  // Check if we're in test mode on certain pages
-  useEffect(() => {
-    // Set test mode based on URL or localStorage
-    const params = new URLSearchParams(location.search);
-    if (params.get("testMode") === "true" || location.pathname === "/payment") {
-      setIsTestMode(true);
-    } else {
-      setIsTestMode(false);
-    }
-  }, [location]);
 
   const handleLogout = async () => {
     await logout();
@@ -137,14 +122,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
               {t("appName")}
             </h1>
-            
-            {/* Test mode indicator */}
-            {isTestMode && (
-              <div className="ml-4 flex items-center bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs">
-                <AlertCircle className="h-3 w-3 mr-1" />
-                Test Mode
-              </div>
-            )}
           </div>
 
           {/* Desktop Navigation */}
@@ -188,9 +165,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <p className={language === "ar" ? "font-cairo" : "font-playfair"}>
             © 2025 {t("appName")} - {t("landing2")}
           </p>
-          {isTestMode && (
-            <p className="text-xs text-amber-600 mt-1">Running in Test Mode</p>
-          )}
         </div>
       </footer>
     </div>

@@ -10,22 +10,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const PaymentOptions = [
-  { 
-    id: "free", 
-    name: "Free Interpretation", 
-    price: 0, 
-    currency: "USD", 
-    priceId: "price_1RIWaECAL5p9VD6oP4MZBPRt",  // Using an actual test price ID for free tier
-    testMode: true 
-  },
-  { 
-    id: "premium", 
-    name: "Premium Interpretation", 
-    price: 5, 
-    currency: "USD", 
-    priceId: "price_1RIWaECAL5p9VD6oP4MZBPRt",
-    testMode: false
-  },
+  { id: "free", name: "Free Interpretation", price: 0, currency: "USD" },
+  { id: "premium", name: "Premium Interpretation", price: 5, currency: "USD", priceId: "price_1RIWaECAL5p9VD6oP4MZBPRt" },
 ];
 
 const PaymentForm: React.FC = () => {
@@ -50,49 +36,49 @@ const PaymentForm: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      const option = PaymentOptions.find(opt => opt.id === selectedOption);
-      
-      if (!option) {
-        throw new Error("Invalid payment option selected");
-      }
-
-      // Always process through Stripe, even for free option
-      toast({
-        title: option.testMode ? "Processing free tier" : "Redirecting to payment",
-        description: option.testMode ? 
-          "Your dream is being processed using our free tier service" : 
-          "You'll be redirected to our secure payment page",
-      });
-      
-      console.log(`Creating checkout session with price ID: ${option.priceId}, test mode: ${option.testMode}`);
-      
-      // Call the Supabase Edge Function to create a checkout session
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { 
-          priceId: option.priceId,
-          testMode: option.testMode
-        }
-      });
-
-      if (error) {
-        console.error("Error creating checkout session:", error);
-        throw new Error(`Error creating checkout session: ${error.message}`);
-      }
-
-      if (data && data.url) {
-        console.log("Received checkout URL:", data.url);
+      // If free plan, skip payment processing
+      if (selectedOption === "free") {
+        toast({
+          title: "Processing dream",
+          description: "Your dream is being processed for interpretation",
+        });
         
-        if (option.testMode) {
-          // For free tier, process the dream directly
-          await processDreamInterpretation();
-          navigate("/interpretation");
-        } else {
-          // For paid tier, redirect to Stripe Checkout
-          window.location.href = data.url;
-        }
+        // Start processing the dream interpretation
+        await processDreamInterpretation();
+        
+        // Navigate to interpretation page
+        navigate("/interpretation");
       } else {
-        console.error("No checkout URL returned:", data);
-        throw new Error("No checkout URL returned");
+        // For premium plan, create a Stripe checkout session
+        const option = PaymentOptions.find(opt => opt.id === selectedOption);
+        
+        toast({
+          title: "Redirecting to payment",
+          description: "You'll be redirected to our secure payment page",
+        });
+        
+        console.log("Creating checkout session with price ID:", option?.priceId);
+        
+        // Call the Supabase Edge Function to create a checkout session
+        const { data, error } = await supabase.functions.invoke("create-checkout", {
+          body: { 
+            priceId: option?.priceId
+          }
+        });
+
+        if (error) {
+          console.error("Error creating checkout session:", error);
+          throw new Error(`Error creating checkout session: ${error.message}`);
+        }
+
+        if (data && data.url) {
+          console.log("Received checkout URL:", data.url);
+          // Redirect to Stripe Checkout
+          window.location.href = data.url;
+        } else {
+          console.error("No checkout URL returned:", data);
+          throw new Error("No checkout URL returned");
+        }
       }
     } catch (error) {
       console.error("Error processing payment:", error);
@@ -157,12 +143,7 @@ const PaymentForm: React.FC = () => {
             onClick={handlePayment}
             disabled={isProcessing}
           >
-            {isProcessing ? 
-              t("processing") : 
-              selectedOption === "free" ? 
-                t("continueForFree") || "Continue for Free" : 
-                t("payNow")
-            }
+            {isProcessing ? t("processing") : selectedOption === "free" ? t("continueForFree") || "Continue for Free" : t("payNow")}
           </Button>
 
           <p className="text-xs text-center text-muted-foreground">

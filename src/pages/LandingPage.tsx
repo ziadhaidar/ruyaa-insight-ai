@@ -50,6 +50,21 @@ const LandingPage: React.FC = () => {
           </div>
         </section>
 
+        
+        {/* Quranic verse */}
+        <div className="pattern-divider" />
+        
+        <section className="w-full max-w-2xl mx-auto my-8 text-center">
+          <div className="quran-verse">
+            <p className="arabic-text text-xl font-arabic">
+              [الروم: 23] وَمِنْ آيَاتِهِ مَنَامُكُم بِاللَّيْلِ وَالنَّهَارِ وَابْتِغَاؤُكُم مِّن فَضْلِهِ ۚ إِنَّ فِي ذَٰلِكَ لَآيَاتٍ لِّقَوْمٍ يَسْمَعُونَ
+            </p>
+            <p className={`english-translation ${language === 'ar' ? 'font-lateef text-lg' : 'font-playfair'}`}>
+              "And among His Signs is your sleep by night and by day, and your seeking of His Bounty. Verily, in that are indeed signs for a people who listen." [Quran 30:23]
+            </p>
+          </div>
+        </section>
+        
         {/* Feature cards */}
         <div className="pattern-divider" />
 
@@ -90,19 +105,6 @@ const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        {/* Quranic verse */}
-        <div className="pattern-divider" />
-        
-        <section className="w-full max-w-2xl mx-auto my-8 text-center">
-          <div className="quran-verse">
-            <p className="arabic-text text-xl font-arabic">
-              [الروم: 23] وَمِنْ آيَاتِهِ مَنَامُكُم بِاللَّيْلِ وَالنَّهَارِ وَابْتِغَاؤُكُم مِّن فَضْلِهِ ۚ إِنَّ فِي ذَٰلِكَ لَآيَاتٍ لِّقَوْمٍ يَسْمَعُونَ
-            </p>
-            <p className={`english-translation ${language === 'ar' ? 'font-lateef text-lg' : 'font-playfair'}`}>
-              "And among His Signs is your sleep by night and by day, and your seeking of His Bounty. Verily, in that are indeed signs for a people who listen." [Quran 30:23]
-            </p>
-          </div>
-        </section>
       </div>
     </Layout>
   );

@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -33,22 +32,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const NavItems = () => (
     <>
-      <Button 
-        variant="ghost" 
-        className={language === 'ar' ? 'font-cairo' : 'font-playfair'} 
-        onClick={() => {
-          navigate("/");
-          closeSheet();
-        }}
-      >
-        {t("appName")}
-      </Button>
-      
       {user && (
         <>
-          <Button 
-            variant="ghost" 
-            className={language === 'ar' ? 'font-cairo' : ''} 
+          <Button
+            variant="ghost"
+            className={language === "ar" ? "font-cairo" : ""}
             onClick={() => {
               navigate("/home");
               closeSheet();
@@ -56,9 +44,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             {t("submitDream")}
           </Button>
-          <Button 
-            variant="ghost" 
-            className={language === 'ar' ? 'font-cairo' : ''} 
+          <Button
+            variant="ghost"
+            className={language === "ar" ? "font-cairo" : ""}
             onClick={() => {
               navigate("/dreams");
               closeSheet();
@@ -66,9 +54,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             {t("pastDreams")}
           </Button>
-          <Button 
-            variant="ghost" 
-            className={language === 'ar' ? 'font-cairo' : ''} 
+          <Button
+            variant="ghost"
+            className={language === "ar" ? "font-cairo" : ""}
             onClick={() => {
               navigate("/settings");
               closeSheet();
@@ -76,9 +64,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             {t("settings")}
           </Button>
-          <Button 
-            variant="destructive" 
-            className={language === 'ar' ? 'font-cairo' : ''} 
+          <Button
+            variant="destructive"
+            className={language === "ar" ? "font-cairo" : ""}
             onClick={() => {
               handleLogout();
               closeSheet();
@@ -88,12 +76,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </Button>
         </>
       )}
-      
+
       {!user && (
         <>
-          <Button 
-            variant="ghost" 
-            className={language === 'ar' ? 'font-cairo' : ''} 
+          <Button
+            variant="ghost"
+            className={language === "ar" ? "font-cairo" : ""}
             onClick={() => {
               navigate("/login");
               closeSheet();
@@ -101,9 +89,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             {t("login")}
           </Button>
-          <Button 
-            variant="default" 
-            className={language === 'ar' ? 'font-cairo islamic-gradient-btn' : 'islamic-gradient-btn'} 
+          <Button
+            variant="default"
+            className={
+              language === "ar"
+                ? "font-cairo islamic-gradient-btn"
+                : "islamic-gradient-btn"
+            }
             onClick={() => {
               navigate("/register");
               closeSheet();
@@ -122,8 +114,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-islamic-gold/10">
         <div className="container mx-auto py-4 flex justify-between items-center">
           <div className="flex items-center">
-            <h1 
-              className={`text-2xl font-bold cursor-pointer animate-pulse-subtle ${language === 'ar' ? 'font-cairo' : 'font-playfair'}`}
+            <h1
+              className={`text-2xl font-bold cursor-pointer animate-pulse-subtle ${
+                language === "ar" ? "font-cairo" : "font-playfair"
+              }`}
               onClick={() => navigate("/")}
             >
               {t("appName")}
@@ -144,7 +138,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </SheetTrigger>
             <SheetContent side="right" className="flex flex-col">
               <div className="flex justify-end">
-                <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsOpen(false)}
+                >
                   <X />
                 </Button>
               </div>
@@ -164,7 +162,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Footer */}
       <footer className="bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-6 border-t border-islamic-gold/10">
         <div className="container mx-auto text-center">
-          <p className={language === 'ar' ? 'font-cairo' : 'font-playfair'}>© 2025 {t("appName")} - {t("landing2")}</p>
+          <p className={language === "ar" ? "font-cairo" : "font-playfair"}>
+            © 2025 {t("appName")} - {t("landing2")}
+          </p>
         </div>
       </footer>
     </div>

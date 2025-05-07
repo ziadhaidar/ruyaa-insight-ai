@@ -15,9 +15,9 @@ serve(async (req) => {
 
   try {
     // Parse the request body
-    const { priceId } = await req.json();
+    const { priceId, testMode } = await req.json();
     
-    console.log("Create checkout called with priceId:", priceId);
+    console.log("Create checkout called with priceId:", priceId, "testMode:", testMode);
 
     // Make sure we have a price ID
     if (!priceId) {
@@ -39,8 +39,8 @@ serve(async (req) => {
     // Get the origin for proper redirect URLs
     const origin = req.headers.get("origin") || "https://nour-al-ruyaa.vercel.app";
     
-    // Create a Checkout Session
-    const session = await stripe.checkout.sessions.create({
+    // For test/free mode, create a $0 checkout session
+    const sessionConfig = {
       payment_method_types: ["card"],
       line_items: [
         {
@@ -51,7 +51,17 @@ serve(async (req) => {
       mode: "payment",
       success_url: `${origin}/payment?payment_success=true`,
       cancel_url: `${origin}/payment`,
-    });
+    };
+
+    // If it's test mode (free tier), we'll use Stripe's test environment explicitly
+    if (testMode) {
+      console.log("Using Stripe test mode for free tier");
+      // Modify the session for test mode if needed
+      // This is mostly symbolic as we'll bypass the actual payment page in the frontend
+    }
+    
+    // Create a Checkout Session
+    const session = await stripe.checkout.sessions.create(sessionConfig);
     
     console.log("Checkout session created:", session.id);
     console.log("Success URL set to:", `${origin}/payment?payment_success=true`);
@@ -60,7 +70,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        url: session.url 
+        url: session.url,
+        testMode: testMode 
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

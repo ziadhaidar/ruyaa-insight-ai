@@ -14,7 +14,6 @@ interface AuthContextProps {
   register: (email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfileStatus: () => Promise<void>;
-  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -218,32 +217,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // New function to handle account deletion
-  const deleteAccount = async () => {
-    if (!user || !session) {
-      return { success: false, error: "You must be logged in to delete your account" };
-    }
-
-    try {
-      // In a production environment, use the secure edge function:
-      // const { data, error } = await supabase.functions.invoke('delete-user', { 
-      //   body: { userId: user.id }
-      // });
-      
-      // If the edge function returns an error
-      // if (error) throw new Error(error.message || "Failed to delete account");
-      
-      // For now, just sign out as we don't have access to service role in frontend
-      await supabase.auth.signOut();
-      
-      navigate('/', { replace: true });
-      return { success: true };
-    } catch (error: any) {
-      console.error("Account deletion error:", error);
-      return { success: false, error: error.message || "Failed to delete account" };
-    }
-  };
-
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -254,8 +227,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       loginWithGoogle, 
       register, 
       logout,
-      refreshProfileStatus,
-      deleteAccount
+      refreshProfileStatus
     }}>
       {children}
     </AuthContext.Provider>

@@ -24,9 +24,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { countries } from "@/lib/countries";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 const profileFormSchema = z.object({
   fullName: z.string().optional(),
@@ -43,15 +40,12 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 const SettingsPage: React.FC = () => {
   const { t, language, setLanguage } = useLanguage();
-  const { user, refreshProfileStatus, deleteAccount } = useAuth();
+  const { user, refreshProfileStatus } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [isResettingPassword, setIsResettingPassword] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -183,35 +177,6 @@ const SettingsPage: React.FC = () => {
       });
     } finally {
       setIsResettingPassword(false);
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    setIsDeleting(true);
-    
-    try {
-      const { success, error } = await deleteAccount();
-      
-      if (!success) {
-        throw new Error(error);
-      }
-      
-      toast({
-        title: "Account deleted",
-        description: "Your account and all associated data have been permanently deleted.",
-      });
-      
-      navigate("/", { replace: true });
-    } catch (error: any) {
-      console.error("Error deleting account:", error);
-      toast({
-        title: "Error deleting account",
-        description: error.message || "There was a problem deleting your account. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-      setDeleteDialogOpen(false);
     }
   };
 
@@ -438,103 +403,53 @@ const SettingsPage: React.FC = () => {
           </TabsContent>
           
           <TabsContent value="security">
-            <div className="space-y-6">
-              {/* Password Reset Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Password Reset</CardTitle>
-                  <CardDescription>
-                    Reset your password if you've forgotten it
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {resetEmailSent ? (
-                    <div className="text-center py-4">
-                      <p className="mb-4">A password reset email has been sent to {resetEmail}.</p>
-                      <p className="text-sm text-muted-foreground">
-                        Please check your inbox and follow the instructions to reset your password.
-                        If you don't see the email, please check your spam folder.
-                      </p>
-                      <Button 
-                        onClick={() => setResetEmailSent(false)} 
-                        variant="outline" 
-                        className="mt-4"
-                      >
-                        Send another reset email
-                      </Button>
+            <Card>
+              <CardHeader>
+                <CardTitle>Password Reset</CardTitle>
+                <CardDescription>
+                  Reset your password if you've forgotten it
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {resetEmailSent ? (
+                  <div className="text-center py-4">
+                    <p className="mb-4">A password reset email has been sent to {resetEmail}.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Please check your inbox and follow the instructions to reset your password.
+                      If you don't see the email, please check your spam folder.
+                    </p>
+                    <Button 
+                      onClick={() => setResetEmailSent(false)} 
+                      variant="outline" 
+                      className="mt-4"
+                    >
+                      Send another reset email
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={handlePasswordReset} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email">Email Address</Label>
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="Your email address"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        required
+                      />
                     </div>
-                  ) : (
-                    <form onSubmit={handlePasswordReset} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="reset-email">Email Address</Label>
-                        <Input
-                          id="reset-email"
-                          type="email"
-                          placeholder="Your email address"
-                          value={resetEmail}
-                          onChange={(e) => setResetEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <Button 
-                        type="submit" 
-                        disabled={isResettingPassword}
-                        className="w-full"
-                      >
-                        {isResettingPassword ? "Sending..." : "Send Password Reset Email"}
-                      </Button>
-                    </form>
-                  )}
-                </CardContent>
-              </Card>
-              
-              {/* Account Deletion Card */}
-              <Card className="border-destructive/50">
-                <CardHeader className="text-destructive">
-                  <CardTitle className="flex items-center gap-2">
-                    <Trash2 className="h-5 w-5" />
-                    Delete Account
-                  </CardTitle>
-                  <CardDescription>
-                    Permanently delete your account and all associated data
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    This action is irreversible. Once you delete your account, all your data including profile information and dream records will be permanently removed from our system.
-                  </p>
-                  <Button 
-                    variant="destructive" 
-                    onClick={() => setDeleteDialogOpen(true)}
-                    className="w-full sm:w-auto"
-                  >
-                    Delete My Account
-                  </Button>
-                  
-                  <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently delete your account and all data associated with it.
-                          This action cannot be undone and you will need to sign up again to use Nour Al Ruyaa services.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                          onClick={handleDeleteAccount}
-                          disabled={isDeleting}
-                        >
-                          {isDeleting ? "Deleting..." : "Yes, Delete My Account"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </CardContent>
-              </Card>
-            </div>
+                    <Button 
+                      type="submit" 
+                      disabled={isResettingPassword}
+                      className="w-full"
+                    >
+                      {isResettingPassword ? "Sending..." : "Send Password Reset Email"}
+                    </Button>
+                  </form>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
           
           <TabsContent value="language">

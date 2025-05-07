@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useState } from "react";
+import LanguageToggle from "@/components/LanguageToggle";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -126,16 +128,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-2">
+            <LanguageToggle />
             <NavItems />
           </nav>
 
           {/* Mobile Navigation */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon">
-                <Menu />
-              </Button>
-            </SheetTrigger>
+            <div className="flex items-center md:hidden">
+              <LanguageToggle />
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="ml-2">
+                  <Menu />
+                </Button>
+              </SheetTrigger>
+            </div>
             <SheetContent side="right" className="flex flex-col">
               <div className="flex justify-end">
                 <Button

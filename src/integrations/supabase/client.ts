@@ -33,13 +33,15 @@ export const deleteUser = async (userId: string) => {
     
     if (!response.ok) {
       const errorText = await response.text();
-      const authError = new AuthError('User deletion failed', errorText);
+      // Fix the type error: Pass a numeric code instead of a string
+      const authError = new AuthError('User deletion failed', 400);
       return { data: { user: null }, error: authError };
     }
     
     return { data: { user: null }, error: null };
   } catch (error: any) {
-    const authError = new AuthError('User deletion failed', error.message);
+    // Fix the type error: Pass a numeric code instead of a string
+    const authError = new AuthError('User deletion failed', 500);
     return { data: { user: null }, error: authError };
   }
 };

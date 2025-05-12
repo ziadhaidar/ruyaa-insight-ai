@@ -22,12 +22,12 @@ const LanguageToggle: React.FC = () => {
       aria-label={t("language")}
       title={titleText}
     >
-      {/* Circle container that clips any overflow */}
-      <div className="h-6 w-6 rounded-full overflow-hidden bg-white">
+      {/* Circle container */}
+      <div className="h-6 w-6 rounded-full bg-white overflow-hidden">
         <img
           src={flagSrc}
           alt={altText}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
         />
       </div>
     </Button>

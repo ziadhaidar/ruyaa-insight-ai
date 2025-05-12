@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const PaymentOptions = [
   { id: "free", name: "Free Interpretation", price: 0, currency: "USD" },
-  { id: "premium", name: "Premium Interpretation", price: 5, currency: "USD", priceId: "price_1RIWaECAL5p9VD6oP4MZBPRt" },
+  { id: "premium", name: "Premium Interpretation", price: 2, currency: "USD", priceId: "price_1RNrncCAL5p9VD6orH064HLz" },
 ];
 
 const PaymentForm: React.FC = () => {

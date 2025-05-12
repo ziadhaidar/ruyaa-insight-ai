@@ -57,7 +57,7 @@ const LandingPage: React.FC = () => {
         <section className="w-full max-w-2xl mx-auto my-8 text-center">
           <div className="quran-verse">
             <p className="arabic-text text-xl font-arabic">
-             وَمِنْ آيَاتِهِ مَنَامُكُم بِاللَّيْلِ وَالنَّهَارِ وَابْتِغَاؤُكُم مِّن فَضْلِهِ ۚ إِنَّ فِي ذَٰلِكَ لَآيَاتٍ لِّقَوْمٍ يَسْمَعُونَ  [الروم: 23]   [الروم: 23] 
+             مِنْ آيَاتِهِ مَنَامُكُم بِاللَّيْلِ وَالنَّهَارِ وَابْتِغَاؤُكُم مِّن فَضْلِهِ ۚ إِنَّ فِي ذَٰلِكَ لَآيَاتٍ لِّقَوْمٍ يَسْمَعُونَ  [الروم: 23]  
             </p>
             <p className={`english-translation ${language === 'ar' ? 'font-lateef text-lg' : 'font-playfair'}`}>
               "And among His Signs is your sleep by night and by day, and your seeking of His Bounty. Verily, in that are indeed signs for a people who listen." [Quran 30:23]

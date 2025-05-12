@@ -1,33 +1,14 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -60,7 +41,7 @@ const CompleteProfilePage: React.FC = () => {
       maritalStatus: undefined,
       hasKids: undefined,
       hasPets: undefined,
-      workStatus: undefined,
+      workStatus: undefined
     },
   });
 
@@ -70,31 +51,35 @@ const CompleteProfilePage: React.FC = () => {
       navigate("/login", { replace: true });
       return;
     }
-
+    
+    console.log("CompleteProfilePage - checking profile completion");
     const checkAndRedirect = async () => {
       try {
+        console.log("Checking if profile is already complete for user:", user.id);
         const { data, error } = await supabase
-          .from("profiles")
-          .select(
-            "age, gender, marital_status, has_kids, has_pets, work_status"
-          )
-          .eq("id", user.id)
+          .from('profiles')
+          .select('age, gender, marital_status, has_kids, has_pets, work_status')
+          .eq('id', user.id)
           .single();
-
-        if (error || !data) {
+          
+        if (error) {
+          console.error("Error checking profile:", error);
           setIsChecking(false);
           return;
         }
-
-        const isComplete =
-          data.age !== null &&
-          data.gender !== null &&
-          data.marital_status !== null &&
-          data.has_kids !== null &&
-          data.has_pets !== null &&
+        
+        const isComplete = data && 
+          data.age !== null && 
+          data.gender !== null && 
+          data.marital_status !== null && 
+          data.has_kids !== null && 
+          data.has_pets !== null && 
           data.work_status !== null;
-
+          
+        console.log("Profile data from check:", data, "Complete:", isComplete);
+        
         if (isComplete) {
+          console.log("Profile is already complete, redirecting to dreams page");
           await refreshProfileStatus();
           navigate("/dreams", { replace: true });
         } else {
@@ -105,44 +90,40 @@ const CompleteProfilePage: React.FC = () => {
         setIsChecking(false);
       }
     };
-
+    
     checkAndRedirect();
   }, [user, navigate, refreshProfileStatus]);
 
   const onSubmit = async (values: ProfileFormValues) => {
     if (!user) return;
-
+    
     setIsSubmitting(true);
-
+    
     try {
       const { error } = await supabase
-        .from("profiles")
+        .from('profiles')
         .update({
           age: values.age,
           gender: values.gender,
           marital_status: values.maritalStatus,
           has_kids: values.hasKids === "yes",
           has_pets: values.hasPets === "yes",
-          work_status: values.workStatus,
+          work_status: values.workStatus
         })
-        .eq("id", user.id);
-
+        .eq('id', user.id);
+      
       if (error) throw error;
-
-      // 🔥 TWITTER CONVERSION TRACKING: fire the event here
-      if (typeof window !== "undefined" && (window as any).twq) {
-        (window as any).twq("event", "tw-ppaow-ppaoy", {
-          conversion_id: user.id, // dedupe using your user/order ID
-        });
-      }
-
+      
       toast({
         title: "Profile completed",
         description: "Your profile has been successfully saved",
       });
-
-      // Refresh profile status and redirect
+      
+      // Refresh profile status in context
       await refreshProfileStatus();
+      
+      // After confirming the profile is saved, redirect to dreams page
+      console.log("Profile saved, redirecting to dreams page");
       navigate("/dreams", { replace: true });
     } catch (error: any) {
       console.error("Error saving profile:", error);
@@ -157,11 +138,7 @@ const CompleteProfilePage: React.FC = () => {
   };
 
   if (isChecking) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        Checking profile status...
-      </div>
-    );
+    return <div className="flex min-h-screen items-center justify-center">Checking profile status...</div>;
   }
 
   return (
@@ -170,14 +147,12 @@ const CompleteProfilePage: React.FC = () => {
         <CardHeader>
           <CardTitle className="text-2xl">Complete Your Profile</CardTitle>
           <CardDescription>
-            Please provide some information about yourself to help us
-            personalize your dream interpretations.
+            Please provide some information about yourself to help us personalize your dream interpretations.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Age */}
               <FormField
                 control={form.control}
                 name="age"
@@ -185,24 +160,24 @@ const CompleteProfilePage: React.FC = () => {
                   <FormItem>
                     <FormLabel>Age</FormLabel>
                     <FormControl>
-                      <Input placeholder="Your age" type="number" {...field} />
+                      <Input 
+                        placeholder="Your age" 
+                        type="number" 
+                        {...field} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              {/* Gender */}
+              
               <FormField
                 control={form.control}
                 name="gender"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Gender</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select gender" />
@@ -212,27 +187,21 @@ const CompleteProfilePage: React.FC = () => {
                         <SelectItem value="male">Male</SelectItem>
                         <SelectItem value="female">Female</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
-                        <SelectItem value="prefer_not_to_say">
-                          Prefer not to say
-                        </SelectItem>
+                        <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              {/* Marital Status */}
+              
               <FormField
                 control={form.control}
                 name="maritalStatus"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Marital Status</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select marital status" />
@@ -250,8 +219,7 @@ const CompleteProfilePage: React.FC = () => {
                   </FormItem>
                 )}
               />
-
-              {/* Kids */}
+              
               <FormField
                 control={form.control}
                 name="hasKids"
@@ -278,8 +246,7 @@ const CompleteProfilePage: React.FC = () => {
                   </FormItem>
                 )}
               />
-
-              {/* Pets */}
+              
               <FormField
                 control={form.control}
                 name="hasPets"
@@ -306,18 +273,14 @@ const CompleteProfilePage: React.FC = () => {
                   </FormItem>
                 )}
               />
-
-              {/* Work Status */}
+              
               <FormField
                 control={form.control}
                 name="workStatus"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Employment Status</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select employment status" />
@@ -335,9 +298,12 @@ const CompleteProfilePage: React.FC = () => {
                   </FormItem>
                 )}
               />
-
-              {/* Submit */}
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? "Saving..." : "Save Profile"}
               </Button>
             </form>

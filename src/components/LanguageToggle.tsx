@@ -18,15 +18,18 @@ const LanguageToggle: React.FC = () => {
       variant="ghost"
       size="icon"
       onClick={toggleLanguage}
-      className="relative p-0"
+      className="p-0"
       aria-label={t("language")}
       title={titleText}
     >
-      <img
-        src={flagSrc}
-        alt={altText}
-        className="h-6 w-6 rounded-full object-cover"
-      />
+      {/* Circle container that clips any overflow */}
+      <div className="h-6 w-6 rounded-full overflow-hidden bg-white">
+        <img
+          src={flagSrc}
+          alt={altText}
+          className="h-full w-full object-cover"
+        />
+      </div>
     </Button>
   );
 };

@@ -26,7 +26,7 @@ const translations = {
     pastDreams: "Past Dreams",
     settings: "Settings",
     payment: "Payment",
-    payNow: "Pay $5 to Continue",
+    payNow: "Pay $2 to Continue",
     continueForFree: "Continue for Free",
     language: "Language",
     english: "English",

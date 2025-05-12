@@ -22,8 +22,8 @@ const LanguageToggle: React.FC = () => {
       aria-label={t("language")}
       title={titleText}
     >
-      {/* Circle container */}
-      <div className="h-6 w-6 rounded-full bg-white overflow-hidden">
+      {/* Transparent circle with 1px black border */}
+      <div className="h-6 w-6 rounded-full border border-black overflow-hidden bg-transparent">
         <img
           src={flagSrc}
           alt={altText}

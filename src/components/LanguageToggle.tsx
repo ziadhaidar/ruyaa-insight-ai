@@ -23,7 +23,7 @@ const LanguageToggle: React.FC = () => {
       title={titleText}
     >
       {/* Transparent circle with 1px black border */}
-      <div className="h-6 w-6 rounded-full border border-black overflow-hidden bg-transparent">
+      <div className="h-8 w-8 rounded-full overflow-hidden bg-transparent">
         <img
           src={flagSrc}
           alt={altText}

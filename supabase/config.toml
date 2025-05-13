@@ -3,3 +3,6 @@ project_id = "nour-al-ruyaa"
 
 [functions.create-checkout]
 verify_jwt = false
+
+[functions.create-admin]
+verify_jwt = true

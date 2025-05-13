@@ -1,9 +1,11 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { AdminProvider } from "@/context/AdminContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { DreamProvider } from "@/context/DreamContext";
 import { useEffect, useState, useRef } from "react";
@@ -22,6 +24,12 @@ import DreamDetailPage from "./pages/DreamDetailPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
+import AdminRoute from "./components/AdminRoute";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import BlogManager from "./pages/admin/BlogManager";
+import PostEditor from "./pages/admin/PostEditor";
+import BlogPage from "./pages/BlogPage";
+import BlogPostPage from "./pages/BlogPostPage";
 
 const queryClient = new QueryClient();
 
@@ -117,6 +125,8 @@ const AppRoutes = () => {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth" element={<Index />} />
+        <Route path="/blog" element={<BlogPage />} />
+        <Route path="/blog/:slug" element={<BlogPostPage />} />
         
         {/* Profile completion route (accessible only when logged in) */}
         <Route path="/complete-profile" element={
@@ -157,6 +167,28 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } />
         
+        {/* Admin routes */}
+        <Route path="/admin" element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        } />
+        <Route path="/admin/posts" element={
+          <AdminRoute>
+            <BlogManager />
+          </AdminRoute>
+        } />
+        <Route path="/admin/posts/new" element={
+          <AdminRoute>
+            <PostEditor />
+          </AdminRoute>
+        } />
+        <Route path="/admin/posts/edit/:id" element={
+          <AdminRoute>
+            <PostEditor />
+          </AdminRoute>
+        } />
+        
         {/* Not found */}
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -169,13 +201,15 @@ const App = () => (
     <BrowserRouter>
       <TooltipProvider>
         <AuthProvider>
-          <LanguageProvider>
-            <DreamProvider>
-              <AppRoutes />
-              <Toaster />
-              <Sonner />
-            </DreamProvider>
-          </LanguageProvider>
+          <AdminProvider>
+            <LanguageProvider>
+              <DreamProvider>
+                <AppRoutes />
+                <Toaster />
+                <Sonner />
+              </DreamProvider>
+            </LanguageProvider>
+          </AdminProvider>
         </AuthProvider>
       </TooltipProvider>
     </BrowserRouter>

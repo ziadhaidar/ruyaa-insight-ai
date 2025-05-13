@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          event_type: string
+          id: string
+          metadata: Json | null
+          referrer: string | null
+          timestamp: string | null
+          url: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          referrer?: string | null
+          timestamp?: string | null
+          url: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          referrer?: string | null
+          timestamp?: string | null
+          url?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       dreams: {
         Row: {
           answers: Json | null
@@ -39,6 +72,57 @@ export type Database = {
           questions?: Json | null
           status?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      posts: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string | null
+          excerpt: string | null
+          featured_image: string | null
+          id: string
+          meta_description: string | null
+          meta_title: string | null
+          published_at: string | null
+          slug: string
+          status: string
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string | null
+          excerpt?: string | null
+          featured_image?: string | null
+          id?: string
+          meta_description?: string | null
+          meta_title?: string | null
+          published_at?: string | null
+          slug: string
+          status: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string | null
+          excerpt?: string | null
+          featured_image?: string | null
+          id?: string
+          meta_description?: string | null
+          meta_title?: string | null
+          published_at?: string | null
+          slug?: string
+          status?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -84,12 +168,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: { requested_role: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

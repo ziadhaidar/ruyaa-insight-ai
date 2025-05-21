@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { BarChart, LineChart } from "@/components/ui/chart";
+// Removed BarChart and LineChart imports as they do not exist in chart.tsx
+// import { BarChart, LineChart } from "@/components/ui/chart";
 import { useNavigate } from "react-router-dom";
 
 const AdminDashboard = () => {

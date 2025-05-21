@@ -35,6 +35,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const NavItems = () => (
     <>
+      <Button
+        variant="ghost"
+        className={language === "ar" ? "font-cairo" : ""}
+        onClick={() => {
+          navigate("/blog");
+          closeSheet();
+        }}
+      >
+        Blog
+      </Button>
       {user && (
         <>
           {/* Admin button - visible only if isAdmin */}

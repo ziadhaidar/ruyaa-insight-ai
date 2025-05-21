@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,11 +63,20 @@ const BlogPage = () => {
 
   return (
     <div className="container mx-auto py-12">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold mb-4">Nour Al Ruyaa Blog</h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Dream interpretation insights, Islamic perspectives, and guidance on understanding your dreams.
-        </p>
+      <div className="flex items-center justify-between mb-6">
+        <div className="text-center flex-1">
+          <h1 className="text-4xl font-bold mb-4">Nour Al Ruyaa Blog</h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Dream interpretation insights, Islamic perspectives, and guidance on understanding your dreams.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          className="ml-4"
+          onClick={() => window.location.href = '/'}
+        >
+          Back to Home
+        </Button>
       </div>
 
       <div className="max-w-xl mx-auto mb-8">

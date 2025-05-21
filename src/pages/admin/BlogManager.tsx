@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -121,11 +120,18 @@ const BlogManager = () => {
   };
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Blog Manager</h2>
+    <div className="p-6">
+      <div className="flex flex-wrap items-center justify-between mb-4 gap-2">
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => navigate("/admin")}>
+            Back to Dashboard
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/dreams")}>
+            Back to App
+          </Button>
+        </div>
         <Button onClick={() => navigate("/admin/posts/new")}>
-          <Plus className="mr-2 h-4 w-4" /> New Post
+          New Post
         </Button>
       </div>
 

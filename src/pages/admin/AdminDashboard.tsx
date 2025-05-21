@@ -1,4 +1,4 @@
-
+import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -10,9 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-// Removed BarChart and LineChart imports as they do not exist in chart.tsx
-// import { BarChart, LineChart } from "@/components/ui/chart";
-import { useNavigate } from "react-router-dom";
 
 const AdminDashboard = () => {
   const [userCount, setUserCount] = useState<number>(0);
@@ -64,7 +61,12 @@ const AdminDashboard = () => {
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
         <div className="flex items-center space-x-2">
-          <Button onClick={() => navigate("/admin/posts")}>Manage Blog</Button>
+          <Button onClick={() => navigate("/dreams")} variant="secondary">
+            Back to App
+          </Button>
+          <Button onClick={() => navigate("/admin/posts")} variant="outline">
+            Manage Blog
+          </Button>
         </div>
       </div>
       
@@ -126,7 +128,7 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent className="pl-2">
               <div className="h-80">
-                {/* Placeholder for chart - would normally populate with real data */}
+                {/* Placeholder for chart */}
                 <div className="flex h-full items-center justify-center text-muted-foreground">
                   Analytics data will display here
                 </div>

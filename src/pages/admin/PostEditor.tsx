@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -160,16 +159,18 @@ const PostEditor = () => {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <Button variant="ghost" onClick={() => navigate("/admin/posts")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Posts
+    <div className="p-6 max-w-3xl mx-auto">
+      <div className="flex flex-wrap items-center justify-between mb-4 gap-2">
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => navigate("/admin")}>
+            Back to Dashboard
           </Button>
-          <h2 className="text-3xl font-bold tracking-tight ml-4">
-            {isEditMode ? "Edit Post" : "Create New Post"}
-          </h2>
+          <Button variant="outline" onClick={() => navigate("/dreams")}>
+            Back to App
+          </Button>
+          <Button variant="ghost" onClick={() => navigate("/admin/posts")}>
+            Blog List
+          </Button>
         </div>
       </div>
 

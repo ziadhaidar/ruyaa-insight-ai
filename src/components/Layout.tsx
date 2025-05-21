@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { useState } from "react";
 import LanguageToggle from "@/components/LanguageToggle";
+import { useAdmin } from "@/context/AdminContext";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,6 +21,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  const { isAdmin, isLoading: adminLoading } = useAdmin();
   const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -36,6 +37,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <>
       {user && (
         <>
+          {/* Admin button - visible only if isAdmin */}
+          {!adminLoading && isAdmin && (
+            <Button
+              variant="outline"
+              className={`border-islamic-gold text-islamic-gold ${
+                language === "ar" ? "font-cairo" : ""
+              }`}
+              onClick={() => {
+                navigate("/admin");
+                closeSheet();
+              }}
+            >
+              Admin
+            </Button>
+          )}
           <Button
             variant="ghost"
             className={language === "ar" ? "font-cairo" : ""}

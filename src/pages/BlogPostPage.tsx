@@ -109,11 +109,11 @@ const BlogPostPage = () => {
         </header>
 
         {post.featured_image && (
-          <div className="aspect-video w-full overflow-hidden rounded-lg mb-8">
+          <div className="w-full max-w-3xl mx-auto overflow-hidden rounded-lg mb-8">
             <img
               src={post.featured_image}
               alt={post.title}
-              className="h-full w-full object-cover"
+              className="w-full h-auto object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = 'https://via.placeholder.com/1200x675?text=Nour+Al+Ruyaa';
               }}

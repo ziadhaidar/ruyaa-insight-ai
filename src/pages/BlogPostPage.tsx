@@ -113,7 +113,7 @@ const BlogPostPage = () => {
             <img
               src={post.featured_image}
               alt={post.title}
-              className="w-full h-auto object-contain"
+              className="w-full h-auto max-h-[80vh] object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = 'https://via.placeholder.com/1200x675?text=Nour+Al+Ruyaa';
               }}

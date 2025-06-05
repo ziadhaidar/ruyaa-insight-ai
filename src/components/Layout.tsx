@@ -1,5 +1,6 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -20,9 +21,20 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, language } = useLanguage();
   const { isAdmin, isLoading: adminLoading } = useAdmin();
   const [isOpen, setIsOpen] = useState(false);
+
+  // Generate canonical URL (remove query parameters)
+  const getCanonicalUrl = () => {
+    if (typeof window !== "undefined") {
+      const baseUrl = window.location.origin;
+      const pathname = location.pathname;
+      return `${baseUrl}${pathname}`;
+    }
+    return "";
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -138,6 +150,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col islamic-pattern-bg">
+      <Helmet>
+        <link rel="canonical" href={getCanonicalUrl()} />
+      </Helmet>
+      
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-islamic-gold/10">
         <div className="container mx-auto py-4 flex justify-between items-center">

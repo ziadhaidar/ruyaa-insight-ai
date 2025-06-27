@@ -65,7 +65,7 @@ const translations = {
     pastDreams: "الأحلام السابقة",
     settings: "الإعدادات",
     payment: "الدفع",
-    payNow: "ادفع 5$ للمتابعة",
+    payNow: "ادفع 2$ للمتابعة",
     continueForFree: "المتابعة مجانًا",
     language: "اللغة",
     english: "الإنجليزية",

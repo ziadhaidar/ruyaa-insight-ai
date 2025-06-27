@@ -1,20 +1,19 @@
 
-import { Dream, InterpretationSession } from "@/types";
+import { Dream, InterpretationSession, Message } from "@/types";
 
 export interface DreamContextType {
   currentDream: Dream | null;
   currentSession: InterpretationSession | null;
   interpretationSession: InterpretationSession | null;
   setCurrentDream: (dream: Dream | null) => void;
-  startNewDreamSession: (dreamText: string) => Promise<void>;
-  isLoading: boolean;
-  processDreamInterpretation: () => Promise<void>;
-  askQuestion: (question: string) => Promise<void>;
+  startNewDreamSession: (dreamText: string) => void;
+  processDreamInterpretation: () => void;
+  askQuestion: (question: string) => void;
   submitAnswer: (answer: string) => Promise<void>;
-  completeDreamInterpretation: () => Promise<void>;
+  completeDreamInterpretation: () => void;
   sendToEmail: (dreamId: string) => Promise<void>;
   saveInterpretation: (interpretation: string) => Promise<void>;
-  getDirectInterpretation: (dreamText: string, userId: string) => Promise<string>;
+  isLoading: boolean;
 }
 
 export interface DreamProviderProps {

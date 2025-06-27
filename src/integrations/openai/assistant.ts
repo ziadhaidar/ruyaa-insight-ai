@@ -1,7 +1,8 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
-// Use the new assistant ID that provides direct interpretations
-const ASSISTANT_ID = "asst_9F7K3xAC6YOFdsMHuuH7D1Yj";
+// Use the securely stored API key from Supabase
+const ASSISTANT_ID = "asst_hTYcB4d0pafR3b6e27quRRyo"; // Your specific assistant ID
 
 export interface OpenAIThread {
   id: string;
@@ -180,7 +181,7 @@ ${content}`;
   }
 };
 
-// Run the assistant on a thread for direct interpretation
+// Run the assistant on a thread with optional instructions
 export const runAssistant = async (
   threadId: string,
   instructions?: string
@@ -194,19 +195,9 @@ export const runAssistant = async (
       assistant_id: ASSISTANT_ID
     };
     
-    // Add instructions if provided - for direct interpretation
+    // Add instructions if provided
     if (instructions) {
       body.instructions = instructions;
-    } else {
-      // Default instruction for direct interpretation
-      body.instructions = `
-        You are an Islamic dream interpreter. Please provide a complete interpretation of this dream.
-        Include:
-        - A detailed but concise explanation of the dream's meaning
-        - One relevant Quranic verse (Arabic + English translation)
-        - Brief spiritual advice based on the dream
-        Be compassionate and insightful. Provide the full interpretation directly without asking questions.
-      `;
     }
     
     console.log("Run assistant request:", { threadId, assistantId: ASSISTANT_ID, hasInstructions: !!instructions });

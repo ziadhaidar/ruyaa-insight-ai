@@ -3,11 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dream, Message, InterpretationSession } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
 
-// Process dream interpretation with direct interpretation (no 3-question protocol)
+// Process dream interpretation with the 3-question protocol
 export const useDreamActions = (state: any) => {
   const { toast } = useToast();
 
-  // Process a dream interpretation request - now gets direct interpretation
+  // Process a dream interpretation request
   const processDreamInterpretation = async () => {
     if (!state.currentDream || !state.user) {
       toast({
@@ -21,7 +21,7 @@ export const useDreamActions = (state: any) => {
     state.setIsLoading(true);
     
     try {
-      console.log("Starting direct dream interpretation process");
+      console.log("Starting dream interpretation process");
       
       // Create a new OpenAI thread
       let threadId = state.threadId;
@@ -38,15 +38,20 @@ export const useDreamActions = (state: any) => {
         console.log("Created and set new threadId:", threadId);
       }
       
-      // Get direct interpretation from the assistant
-      console.log("Getting direct interpretation from assistant");
-      const interpretation = await state.getDirectInterpretation(
+      // Send the dream to the assistant
+      console.log("Sending dream to the assistant");
+      await state.sendMessageToAssistant(
+        threadId, 
         state.currentDream.dream_text, 
         state.user.id
       );
-      console.log("Received interpretation:", interpretation.substring(0, 100) + "...");
       
-      // Create a session with the dream and interpretation
+      // Get the first question from the assistant
+      console.log("Getting first question from assistant");
+      const firstQuestion = await state.runAssistantAndGetResponse(threadId, 1);
+      console.log("Received first question:", firstQuestion);
+      
+      // Create a new session with the initial message exchange
       const session: InterpretationSession = {
         dream: state.currentDream,
         messages: [
@@ -60,19 +65,19 @@ export const useDreamActions = (state: any) => {
           {
             id: uuidv4(),
             dreamId: state.currentDream.id,
-            content: interpretation,
+            content: firstQuestion,
             sender: "ai",
             timestamp: new Date().toISOString()
           }
         ],
-        currentQuestion: 0, // No questions needed
-        isComplete: true // Interpretation is complete immediately
+        currentQuestion: 1,
+        isComplete: false
       };
       
       state.setCurrentSession(session);
-      console.log("Session created with direct interpretation");
+      console.log("Session created with first question");
       
-      // Save dream to database with interpretation
+      // Check if dream already exists in the database
       const { data: existingDreams, error: fetchError } = await supabase
         .from('dreams')
         .select('*')
@@ -82,44 +87,29 @@ export const useDreamActions = (state: any) => {
         console.error("Error checking if dream exists:", fetchError);
       }
       
-      // Save or update dream with interpretation
+      // Only save if the dream doesn't already exist
       if (!existingDreams || existingDreams.length === 0) {
-        console.log("Dream doesn't exist in database, saving with interpretation...");
+        console.log("Dream doesn't exist in database, saving...");
         
+        // Save dream to database - FIX: Don't provide the ID when inserting, let Supabase generate it
         const { error } = await supabase.from('dreams').insert({
           user_id: state.user.id,
           dream_text: state.currentDream.dream_text,
-          interpretation: interpretation,
-          status: "completed"
+          status: "interpreting"
         });
         
         if (error) {
           console.error("Error saving dream:", error);
           toast({
             title: "Warning",
-            description: "Your dream interpretation is ready, but there was an issue saving it to your history.",
+            description: "Your dream interpretation has started, but there was an issue saving it to your history.",
             variant: "destructive"
           });
         } else {
-          console.log("Dream saved to database successfully with interpretation");
+          console.log("Dream saved to database successfully");
         }
       } else {
-        console.log("Dream exists, updating with interpretation");
-        const { error } = await supabase.from('dreams').update({
-          interpretation: interpretation,
-          status: "completed"
-        }).eq('id', state.currentDream.id);
-        
-        if (error) {
-          console.error("Error updating dream:", error);
-          toast({
-            title: "Warning",
-            description: "Your dream interpretation is ready, but there was an issue saving it.",
-            variant: "destructive"
-          });
-        } else {
-          console.log("Dream updated with interpretation successfully");
-        }
+        console.log("Dream already exists in database, skipping save");
       }
       
     } catch (error: any) {
@@ -129,13 +119,13 @@ export const useDreamActions = (state: any) => {
         description: `Couldn't process your dream interpretation: ${error.message}`,
         variant: "destructive"
       });
-      throw error;
+      throw error; // Re-throw to handle in the component
     } finally {
       state.setIsLoading(false);
     }
   };
   
-  // Submit an answer - now for follow-up questions only
+  // Submit an answer to a question
   const submitAnswer = async (answer: string) => {
     if (!state.currentSession || !state.threadId || !state.user) {
       toast({
@@ -146,13 +136,12 @@ export const useDreamActions = (state: any) => {
       return;
     }
     
-    // This is now used only for follow-up questions after the main interpretation
     state.setIsLoading(true);
     
     try {
-      console.log("Submitting follow-up question");
+      console.log("Submitting answer for question", state.currentSession.currentQuestion);
       
-      // Add the user's question to the session
+      // Add the user's answer to the session
       const newUserMessage: Message = {
         id: uuidv4(),
         dreamId: state.currentSession.dream.id,
@@ -167,13 +156,26 @@ export const useDreamActions = (state: any) => {
         messages: updatedMessages
       });
       
-      // Send follow-up question to the assistant
-      await state.sendMessageToAssistant(state.threadId, answer, state.user.id);
+      // Send answer to the assistant
+      console.log("Sending answer to the assistant");
+      await state.sendMessageToAssistant(
+        state.threadId,
+        answer,
+        state.user.id
+      );
       
-      // Get response from assistant
-      const assistantResponse = await state.getDirectInterpretation("", state.user.id);
+      // Determine the next question number
+      const nextQuestionNumber = state.currentSession.currentQuestion + 1;
+      console.log("Next question number:", nextQuestionNumber);
       
-      // Add the assistant's response
+      // Get next question or final interpretation from the assistant
+      console.log("Getting response from assistant");
+      const assistantResponse = await state.runAssistantAndGetResponse(state.threadId, nextQuestionNumber);
+      console.log("Received assistant response");
+      
+      const isInterpretationComplete = nextQuestionNumber > 3;
+      
+      // Add the assistant's response to the session
       const newAIMessage: Message = {
         id: uuidv4(),
         dreamId: state.currentSession.dream.id,
@@ -182,19 +184,69 @@ export const useDreamActions = (state: any) => {
         timestamp: new Date().toISOString()
       };
       
+      // Update the current session
       state.setCurrentSession({
         ...state.currentSession,
-        messages: [...updatedMessages, newAIMessage]
+        messages: [...updatedMessages, newAIMessage],
+        currentQuestion: nextQuestionNumber,
+        isComplete: isInterpretationComplete
       });
       
+      // Update dream in database
+      if (isInterpretationComplete) {
+        console.log("Interpretation complete, updating dream status to completed");
+
+        const allMessages = [...updatedMessages, newAIMessage];
+
+        const questions = allMessages
+          .filter((msg) => msg.sender === "ai")
+          .map((msg) => msg.content);
+
+        const answers = allMessages
+          .filter((msg) => msg.sender === "user")
+          .map((msg) => msg.content);
+
+        const { error } = await supabase.from("dreams")
+          .update({
+            status: "completed",
+            interpretation: assistantResponse,
+            questions: questions,
+            answers: answers
+          })
+          .eq("id", state.currentSession.dream.id);
+
+        if (error) {
+          console.error("Error updating dream:", error);
+          toast({
+            title: "Database Error",
+            description: "Failed to save final interpretation. Please try again later.",
+            variant: "destructive"
+          });
+        } else {
+          console.log("Dream updated to completed successfully");
+        }
+      } else {
+        // Just update the status if we're still in the questioning phase
+        console.log("Still in questioning phase, updating dream status");
+        const { error } = await supabase.from('dreams').update({
+          status: "interpreting"
+        }).eq('id', state.currentSession.dream.id);
+        
+        if (error) {
+          console.error("Error updating dream status:", error);
+        } else {
+          console.log("Dream status updated successfully");
+        }
+      }
+
     } catch (error: any) {
-      console.error("Error submitting follow-up question:", error);
+      console.error("Error submitting answer:", error);
       toast({
         title: "Assistant Error",
         description: `Error: ${error.message}`,
         variant: "destructive"
       });
-      throw error;
+      throw error; // Re-throw to handle in component
     } finally {
       state.setIsLoading(false);
     }
@@ -285,41 +337,10 @@ export const useDreamActions = (state: any) => {
 
   return {
     processDreamInterpretation,
-    askQuestion: submitAnswer, // Alias for compatibility
+    askQuestion,
     submitAnswer,
-    completeDreamInterpretation: async () => {}, // No-op since interpretation is complete immediately
-    sendToEmail: async (dreamId: string) => {
-      toast({
-        title: "Email Sent",
-        description: "Your dream interpretation has been sent to your email."
-      });
-    },
-    saveInterpretation: async (interpretation: string) => {
-      if (!state.currentDream || !state.user) return;
-      
-      try {
-        const { error } = await supabase.from('dreams').update({
-          interpretation: interpretation,
-          status: "completed"
-        }).eq('id', state.currentDream.id);
-        
-        if (error) {
-          throw error;
-        }
-        
-        toast({
-          title: "Interpretation Saved",
-          description: "Your dream interpretation has been saved."
-        });
-        
-      } catch (error: any) {
-        console.error("Error saving interpretation:", error);
-        toast({
-          title: "Error",
-          description: `Couldn't save your dream interpretation: ${error.message}`,
-          variant: "destructive"
-        });
-      }
-    }
+    completeDreamInterpretation,
+    sendToEmail,
+    saveInterpretation
   };
 };

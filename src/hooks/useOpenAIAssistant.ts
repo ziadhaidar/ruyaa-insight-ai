@@ -67,139 +67,122 @@ export const useOpenAIAssistant = () => {
     }
   };
 
-  // Poll the run status until it's complete or failed with improved timeout handling
-  const pollRunStatus = async (threadId: string, runId: string, maxAttempts = 60, delayMs = 2000) => {
+  // Poll the run status until it's complete or failed
+  const pollRunStatus = async (threadId: string, runId: string, maxAttempts = 30, delayMs = 1000) => {
     let attempts = 0;
-    let consecutiveQueuedAttempts = 0;
-    
-    console.log(`Starting to poll run ${runId} with max attempts: ${maxAttempts}`);
     
     while (attempts < maxAttempts) {
-      try {
-        const status = await checkRunStatus(threadId, runId);
-        
-        if (!status) {
-          throw new Error("Failed to check run status");
-        }
-        
-        console.log(`Poll attempt ${attempts + 1}/${maxAttempts} for run ${runId}, status: ${status.status}`);
-        
-        // Check if run completed successfully
-        if (status.status === "completed") {
-          console.log(`Run ${runId} completed successfully after ${attempts + 1} attempts`);
-          return status;
-        }
-        
-        // Check for failed states
-        if (["failed", "cancelled", "expired"].includes(status.status)) {
+      const status = await checkRunStatus(threadId, runId);
+      
+      if (!status) {
+        throw new Error("Failed to check run status");
+      }
+      
+      if (["completed", "failed", "cancelled", "expired"].includes(status.status)) {
+        if (status.status !== "completed") {
           throw new Error(`Run ended with status: ${status.status}`);
         }
-        
-        // Track consecutive queued attempts to detect stuck runs
-        if (status.status === "queued") {
-          consecutiveQueuedAttempts++;
-          // If stuck in queued for too long, try to cancel and restart
-          if (consecutiveQueuedAttempts > 20) {
-            console.warn(`Run ${runId} stuck in queued status for ${consecutiveQueuedAttempts} attempts, considering it failed`);
-            throw new Error("Run appears to be stuck in queue - OpenAI service may be overloaded");
-          }
-        } else {
-          consecutiveQueuedAttempts = 0; // Reset counter if status changes
-        }
-        
-        // Wait before checking again with exponential backoff for queued runs
-        const waitTime = status.status === "queued" ? Math.min(delayMs * 1.5, 5000) : delayMs;
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-        attempts++;
-        
-      } catch (error) {
-        console.error(`Error polling run status (attempt ${attempts + 1}):`, error);
-        // If it's a network error, retry a few times
-        if (attempts < 3) {
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-          attempts++;
-          continue;
-        }
-        throw error;
+        return status;
       }
+      
+      // Wait before checking again
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      attempts++;
+      console.log(`Polling attempt ${attempts}/${maxAttempts} for run ${runId}, status: ${status.status}`);
     }
     
-    throw new Error(`Maximum polling attempts (${maxAttempts}) reached - OpenAI service may be experiencing delays`);
+    throw new Error("Maximum polling attempts reached");
   };
 
-  // Get a direct interpretation for a dream (no questions)
-  const getDirectInterpretation = async (dreamText: string, userId: string) => {
+  // Run the assistant with specific instructions based on question number
+const runAssistantWithInstructions = async (threadId: string, questionNumber: number) => {
+  let instructions = "";
+
+  if (questionNumber === 1) {
+    instructions = `
+You are an Islamic dream interpreter.
+Do not give any interpretation yet.
+Just ask the first follow-up question to clarify the dream.
+Keep it short and precise.`;
+  } else if (questionNumber === 2) {
+    instructions = `
+You are continuing a dream interpretation.
+Do not give any interpretation yet.
+Ask a second follow-up question, based on previous user response.
+Be short and precise.`;
+  } else if (questionNumber === 3) {
+    instructions = `
+This is the last follow-up question before the interpretation.
+Do not give the interpretation yet.
+Ask a final, very useful follow-up question.
+Short and direct.`;
+  } else if (questionNumber > 3) {
+    instructions = `
+Now that you have three answers, give the final dream interpretation.
+Include:
+- A detailed but concise explanation
+- One relevant Quranic verse (Arabic + English translation)
+- One brief spiritual advice based on the dream.
+Do not ask any further questions.`;
+  }
+
+  console.log(`Running assistant with instructions for question ${questionNumber}:`, instructions);
+
+  const run = await runAssistant(threadId, instructions);
+  if (!run) {
+    throw new Error("Failed to run assistant");
+  }
+
+  console.log("Run started with ID:", run.id);
+  return run;
+};
+
+  // Run the assistant and wait for a response
+  const runAssistantAndGetResponse = async (threadId: string, questionNumber: number = 1) => {
     try {
       setIsLoading(true);
-      console.log("Getting direct interpretation for dream:", dreamText.substring(0, 50) + "...");
+      console.log(`Running assistant for question ${questionNumber} on thread ${threadId}`);
       
-      // Create a new thread if needed
-      let currentThreadId = threadId;
-      if (!currentThreadId) {
-        currentThreadId = await createAssistantThread();
-        if (!currentThreadId) {
-          throw new Error("Failed to create thread for interpretation");
-        }
-        setThreadId(currentThreadId);
-      }
+      // Run the assistant on the thread with appropriate instructions
+      const run = await runAssistantWithInstructions(threadId, questionNumber);
       
-      // Add the dream text to the thread
-      await addMessageToThread(currentThreadId, dreamText, userId);
-      
-      // Run the assistant to get direct interpretation
-      const run = await runAssistant(currentThreadId);
-      
-      if (!run) {
-        throw new Error("Failed to run assistant for interpretation");
-      }
-      
-      console.log(`Started assistant run ${run.id} for interpretation`);
-      
-      // Poll for completion with increased timeout
-      const runResult = await pollRunStatus(currentThreadId, run.id, 60, 2000);
-      console.log("Interpretation run completed with status:", runResult.status);
+      // Poll for completion
+      const runResult = await pollRunStatus(threadId, run.id);
+      console.log("Run completed with status:", runResult.status);
       
       // Get the assistant's response
-      const assistantResponse = await getLatestAssistantMessage(currentThreadId);
-      if (!assistantResponse) {
-        throw new Error("No response found for interpretation");
+      const messages = await getMessages(threadId);
+      
+      if (!messages || messages.length === 0) {
+        throw new Error("No messages found after run completion");
       }
       
-      console.log("Got direct interpretation:", assistantResponse.substring(0, 50) + "...");
-      return assistantResponse;
+      // Find the assistant's response (the latest assistant message)
+      const assistantMessages = messages.filter(m => m.role === "assistant");
+      const latestAssistantMessage = assistantMessages[0]; // They come in reverse chronological order
+      
+      if (!latestAssistantMessage) {
+        throw new Error("No assistant message found after run completion");
+      }
+      
+      // Extract the text from the assistant's response
+      const responseText = latestAssistantMessage.content[0]?.text?.value;
+      if (!responseText) {
+        throw new Error("Assistant message has no text content");
+      }
+      
+      console.log("Got assistant response:", responseText.substring(0, 50) + "...");
+      return responseText;
     } catch (error) {
-      console.error("Error getting direct interpretation:", error);
-      
-      // Provide more specific error messages
-      let errorMessage = "Could not get interpretation";
-      if (error.message.includes("stuck in queue")) {
-        errorMessage = "OpenAI service is currently experiencing high demand. Please try again in a few minutes.";
-      } else if (error.message.includes("Maximum polling attempts")) {
-        errorMessage = "The interpretation is taking longer than usual. Please try again.";
-      } else if (error.message.includes("Failed to create thread")) {
-        errorMessage = "Could not connect to interpretation service. Please check your connection.";
-      }
-      
+      console.error("Error running assistant:", error);
       toast({
-        title: "Interpretation Error",
-        description: errorMessage,
+        title: "Assistant Error",
+        description: `Error: ${error.message}`,
         variant: "destructive"
       });
       throw error;
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Legacy function for compatibility - now returns direct interpretation
-  const runAssistantAndGetResponse = async (threadId: string, questionNumber: number = 1) => {
-    // Since the new assistant provides direct interpretation, we ignore questionNumber
-    try {
-      const userId = (await supabase.auth.getUser()).data.user?.id || "user";
-      return await getDirectInterpretation("", userId); // This will use the existing thread content
-    } catch (error) {
-      console.error("Error in runAssistantAndGetResponse:", error);
-      throw error;
     }
   };
 
@@ -364,88 +347,9 @@ export const useOpenAIAssistant = () => {
     createAssistantThread,
     sendMessageToAssistant,
     runAssistantAndGetResponse,
-    getDirectInterpretation,
-    getAnsweredQuestionsCount: async (threadId: string) => {
-      try {
-        return await countUserMessages(threadId) - 1; // Subtract 1 for the initial dream submission
-      } catch (error) {
-        console.error("Error counting answered questions:", error);
-        throw error;
-      }
-    },
+    getAnsweredQuestionsCount,
     getLatestAssistantMessage,
-    getInterpretation: getDirectInterpretation, // Alias for direct interpretation
-    askFollowUpQuestion: async (
-      question: string, 
-      dreamInterpretation: string,
-      chatHistory: { questions: string[], answers: string[] }
-    ) => {
-      try {
-        setIsLoading(true);
-        
-        // Create a new thread if needed
-        if (!threadId) {
-          const newThreadId = await createAssistantThread();
-          setThreadId(newThreadId);
-          
-          // Send the interpretation as context
-          await addMessageToThread(
-            newThreadId, 
-            `CONTEXT: This is a dream interpretation: ${dreamInterpretation}`, 
-            "user"
-          );
-          
-          // Send previous chat history as context
-          if (chatHistory.questions.length > 0) {
-            for (let i = 0; i < chatHistory.questions.length; i++) {
-              await addMessageToThread(newThreadId, chatHistory.questions[i], "user");
-              if (i < chatHistory.answers.length) {
-                await addMessageToThread(newThreadId, chatHistory.answers[i], "assistant");
-              }
-            }
-          }
-        }
-        
-        const currentThreadId = threadId as string;
-        
-        // Send the follow-up question
-        await addMessageToThread(currentThreadId, question, "user");
-        
-        // Run the assistant
-        const run = await runAssistant(currentThreadId, `
-          You are an Islamic dream interpreter answering a follow-up question about a dream interpretation.
-          Be compassionate, insightful, and helpful.
-          Provide a detailed but concise answer.
-          If relevant, include Islamic context or Quranic references.
-        `);
-        
-        if (!run) {
-          throw new Error("Failed to run assistant for follow-up");
-        }
-        
-        // Poll for completion with increased timeout
-        const runResult = await pollRunStatus(currentThreadId, run.id, 60, 2000);
-        console.log("Follow-up run completed with status:", runResult.status);
-        
-        // Get the assistant's response
-        const assistantResponse = await getLatestAssistantMessage(currentThreadId);
-        if (!assistantResponse) {
-          throw new Error("No response found for follow-up question");
-        }
-        
-        console.log("Got follow-up response:", assistantResponse.substring(0, 50) + "...");
-        return assistantResponse;
-      } catch (error) {
-        console.error("Error processing follow-up question:", error);
-        toast({
-          title: "Question Error",
-          description: `Could not process your question: ${error.message}`,
-          variant: "destructive"
-        });
-        throw error;
-      } finally {
-        setIsLoading(false);
-      }
-    }
+    getInterpretation,
+    askFollowUpQuestion
   };
 };

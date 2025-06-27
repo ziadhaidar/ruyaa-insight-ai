@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   email: string;
@@ -47,6 +46,16 @@ export function jsonToStringArray(json: any): string[] {
   if (Array.isArray(json)) {
     return json.filter(item => typeof item === 'string');
   }
+  if (typeof json === 'string') {
+    try {
+      const parsed = JSON.parse(json);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(item => typeof item === 'string');
+      }
+    } catch (e) {
+      // Not valid JSON, return empty array
+    }
+  }
   return [];
 }
 
@@ -57,6 +66,42 @@ export function safeStatusCast(status: string | null): "pending" | "paid" | "int
     return status as "pending" | "paid" | "interpreting" | "completed";
   }
   return "pending";
+}
+
+// Helper function to safely convert string to gender enum
+export function safeGenderCast(gender: string | null): "male" | "female" | "other" | "prefer_not_to_say" {
+  if (!gender) return "prefer_not_to_say";
+  if (["male", "female", "other", "prefer_not_to_say"].includes(gender)) {
+    return gender as "male" | "female" | "other" | "prefer_not_to_say";
+  }
+  return "prefer_not_to_say";
+}
+
+// Helper function to safely convert string to marital status enum
+export function safeMaritalStatusCast(status: string | null): "single" | "married" | "divorced" | "widowed" | "other" {
+  if (!status) return "other";
+  if (["single", "married", "divorced", "widowed", "other"].includes(status)) {
+    return status as "single" | "married" | "divorced" | "widowed" | "other";
+  }
+  return "other";
+}
+
+// Helper function to safely convert string to work status enum
+export function safeWorkStatusCast(status: string | null): "employed" | "unemployed" | "student" | "retired" | "other" {
+  if (!status) return "other";
+  if (["employed", "unemployed", "student", "retired", "other"].includes(status)) {
+    return status as "employed" | "unemployed" | "student" | "retired" | "other";
+  }
+  return "other";
+}
+
+// Helper function to safely convert string to post status enum
+export function safePostStatusCast(status: string | null): "draft" | "published" {
+  if (!status) return "draft";
+  if (["draft", "published"].includes(status)) {
+    return status as "draft" | "published";
+  }
+  return "draft";
 }
 
 // Extend the Database interface with database types

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -94,95 +93,66 @@ export const useOpenAIAssistant = () => {
     throw new Error("Maximum polling attempts reached");
   };
 
-  // Run the assistant with specific instructions based on question number
-const runAssistantWithInstructions = async (threadId: string, questionNumber: number) => {
-  let instructions = "";
-
-  if (questionNumber === 1) {
-    instructions = `
-You are an Islamic dream interpreter.
-Do not give any interpretation yet.
-Just ask the first follow-up question to clarify the dream.
-Keep it short and precise.`;
-  } else if (questionNumber === 2) {
-    instructions = `
-You are continuing a dream interpretation.
-Do not give any interpretation yet.
-Ask a second follow-up question, based on previous user response.
-Be short and precise.`;
-  } else if (questionNumber === 3) {
-    instructions = `
-This is the last follow-up question before the interpretation.
-Do not give the interpretation yet.
-Ask a final, very useful follow-up question.
-Short and direct.`;
-  } else if (questionNumber > 3) {
-    instructions = `
-Now that you have three answers, give the final dream interpretation.
-Include:
-- A detailed but concise explanation
-- One relevant Quranic verse (Arabic + English translation)
-- One brief spiritual advice based on the dream.
-Do not ask any further questions.`;
-  }
-
-  console.log(`Running assistant with instructions for question ${questionNumber}:`, instructions);
-
-  const run = await runAssistant(threadId, instructions);
-  if (!run) {
-    throw new Error("Failed to run assistant");
-  }
-
-  console.log("Run started with ID:", run.id);
-  return run;
-};
-
-  // Run the assistant and wait for a response
-  const runAssistantAndGetResponse = async (threadId: string, questionNumber: number = 1) => {
+  // Get a direct interpretation for a dream (no questions)
+  const getDirectInterpretation = async (dreamText: string, userId: string) => {
     try {
       setIsLoading(true);
-      console.log(`Running assistant for question ${questionNumber} on thread ${threadId}`);
+      console.log("Getting direct interpretation for dream:", dreamText.substring(0, 50) + "...");
       
-      // Run the assistant on the thread with appropriate instructions
-      const run = await runAssistantWithInstructions(threadId, questionNumber);
+      // Create a new thread if needed
+      let currentThreadId = threadId;
+      if (!currentThreadId) {
+        currentThreadId = await createAssistantThread();
+        if (!currentThreadId) {
+          throw new Error("Failed to create thread for interpretation");
+        }
+        setThreadId(currentThreadId);
+      }
+      
+      // Add the dream text to the thread
+      await addMessageToThread(currentThreadId, dreamText, userId);
+      
+      // Run the assistant to get direct interpretation
+      const run = await runAssistant(currentThreadId);
+      
+      if (!run) {
+        throw new Error("Failed to run assistant for interpretation");
+      }
       
       // Poll for completion
-      const runResult = await pollRunStatus(threadId, run.id);
-      console.log("Run completed with status:", runResult.status);
+      const runResult = await pollRunStatus(currentThreadId, run.id);
+      console.log("Interpretation run completed with status:", runResult.status);
       
       // Get the assistant's response
-      const messages = await getMessages(threadId);
-      
-      if (!messages || messages.length === 0) {
-        throw new Error("No messages found after run completion");
+      const assistantResponse = await getLatestAssistantMessage(currentThreadId);
+      if (!assistantResponse) {
+        throw new Error("No response found for interpretation");
       }
       
-      // Find the assistant's response (the latest assistant message)
-      const assistantMessages = messages.filter(m => m.role === "assistant");
-      const latestAssistantMessage = assistantMessages[0]; // They come in reverse chronological order
-      
-      if (!latestAssistantMessage) {
-        throw new Error("No assistant message found after run completion");
-      }
-      
-      // Extract the text from the assistant's response
-      const responseText = latestAssistantMessage.content[0]?.text?.value;
-      if (!responseText) {
-        throw new Error("Assistant message has no text content");
-      }
-      
-      console.log("Got assistant response:", responseText.substring(0, 50) + "...");
-      return responseText;
+      console.log("Got direct interpretation:", assistantResponse.substring(0, 50) + "...");
+      return assistantResponse;
     } catch (error) {
-      console.error("Error running assistant:", error);
+      console.error("Error getting direct interpretation:", error);
       toast({
-        title: "Assistant Error",
-        description: `Error: ${error.message}`,
+        title: "Interpretation Error",
+        description: `Could not get interpretation: ${error.message}`,
         variant: "destructive"
       });
       throw error;
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Legacy function for compatibility - now returns direct interpretation
+  const runAssistantAndGetResponse = async (threadId: string, questionNumber: number = 1) => {
+    // Since the new assistant provides direct interpretation, we ignore questionNumber
+    try {
+      const userId = (await supabase.auth.getUser()).data.user?.id || "user";
+      return await getDirectInterpretation("", userId); // This will use the existing thread content
+    } catch (error) {
+      console.error("Error in runAssistantAndGetResponse:", error);
+      throw error;
     }
   };
 
@@ -347,9 +317,10 @@ Do not ask any further questions.`;
     createAssistantThread,
     sendMessageToAssistant,
     runAssistantAndGetResponse,
+    getDirectInterpretation,
     getAnsweredQuestionsCount,
     getLatestAssistantMessage,
-    getInterpretation,
+    getInterpretation: getDirectInterpretation, // Alias for direct interpretation
     askFollowUpQuestion
   };
 };

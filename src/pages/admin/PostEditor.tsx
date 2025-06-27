@@ -1,150 +1,149 @@
-import { useState, useEffect, useCallback } from "react";
+
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { toast } from "sonner";
-import { ArrowLeft, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import Layout from "@/components/Layout";
+import AdminRoute from "@/components/AdminRoute";
+import { safePostStatusCast } from "@/types";
 
 interface PostFormData {
   title: string;
   slug: string;
-  body: string;
   excerpt: string;
-  status: "draft" | "published";
+  body: string;
   meta_title: string;
   meta_description: string;
   featured_image: string;
+  tags: string[];
+  status: "draft" | "published";
 }
 
-const PostEditor = () => {
-  const { id } = useParams();
-  const { user } = useAuth();
+const PostEditor: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const isEditMode = Boolean(id);
-
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(!!id);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<PostFormData>({
     title: "",
     slug: "",
-    body: "",
     excerpt: "",
-    status: "draft",
+    body: "",
     meta_title: "",
     meta_description: "",
-    featured_image: ""
+    featured_image: "",
+    tags: [],
+    status: "draft",
   });
 
-  const [loading, setLoading] = useState(isEditMode);
-  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (id) {
+      fetchPost();
+    }
+  }, [id]);
 
-  // Generate slug from title
-  const generateSlug = useCallback((title: string) => {
+  const fetchPost = async () => {
+    if (!id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setFormData({
+          title: data.title,
+          slug: data.slug,
+          excerpt: data.excerpt || "",
+          body: data.body,
+          meta_title: data.meta_title || "",
+          meta_description: data.meta_description || "",
+          featured_image: data.featured_image || "",
+          tags: data.tags || [],
+          status: safePostStatusCast(data.status),
+        });
+      }
+    } catch (error: any) {
+      console.error("Error fetching post:", error);
+      toast({
+        title: "Error loading post",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateSlug = (title: string) => {
     return title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-  }, []);
-
-  // Load post data if in edit mode
-  useEffect(() => {
-    const fetchPost = async () => {
-      if (!id) return;
-
-      try {
-        const { data, error } = await supabase
-          .from('posts')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (error) throw error;
-        if (data) setFormData(data);
-      } catch (error) {
-        console.error("Error fetching post:", error);
-        toast.error("Failed to load post");
-        navigate("/admin/posts");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (isEditMode) fetchPost();
-  }, [id, isEditMode, navigate]);
-
-  // Handle form input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-
-    // Auto-generate slug from title if title is changed and slug is empty or was auto-generated
-    if (name === "title") {
-      setFormData(prev => ({
-        ...prev,
-        slug: generateSlug(value)
-      }));
-    }
+      .replace(/^-+|-+$/g, "");
   };
 
-  // Handle select input changes
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleTitleChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      title: value,
+      slug: generateSlug(value),
+    }));
   };
 
-  // Save post
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) {
-      toast.error("You must be logged in to save posts");
-      return;
-    }
+  const handleSave = async (status: "draft" | "published") => {
+    if (!user) return;
 
+    setSaving(true);
     try {
-      setSaving(true);
-      
       const postData = {
         ...formData,
+        status,
         author_id: user.id,
-        published_at: formData.status === 'published' ? new Date().toISOString() : null
+        published_at: status === "published" ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
       };
-      
-      if (isEditMode) {
+
+      if (id) {
         const { error } = await supabase
-          .from('posts')
+          .from("posts")
           .update(postData)
-          .eq('id', id);
-          
+          .eq("id", id);
+
         if (error) throw error;
-        toast.success("Post updated successfully");
       } else {
         const { error } = await supabase
-          .from('posts')
+          .from("posts")
           .insert([postData]);
-          
+
         if (error) throw error;
-        toast.success("Post created successfully");
       }
-      
-      navigate("/admin/posts");
-    } catch (error) {
+
+      toast({
+        title: `Post ${status === "published" ? "published" : "saved"}`,
+        description: `The post has been ${status === "published" ? "published" : "saved as draft"} successfully.`,
+      });
+
+      navigate("/admin/blog");
+    } catch (error: any) {
       console.error("Error saving post:", error);
-      toast.error("Failed to save post");
+      toast({
+        title: "Error saving post",
+        description: error.message,
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -152,178 +151,86 @@ const PostEditor = () => {
 
   if (loading) {
     return (
-      <div className="flex-1 p-8 flex items-center justify-center">
-        Loading post...
-      </div>
+      <AdminRoute>
+        <Layout>
+          <div className="max-w-4xl mx-auto">
+            <p>Loading post...</p>
+          </div>
+        </Layout>
+      </AdminRoute>
     );
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="flex flex-wrap items-center justify-between mb-4 gap-2">
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => navigate("/admin")}>
-            Back to Dashboard
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/dreams")}>
-            Back to App
-          </Button>
-          <Button variant="ghost" onClick={() => navigate("/admin/posts")}>
-            Blog List
-          </Button>
-        </div>
-      </div>
+    <AdminRoute>
+      <Layout>
+        <div className="max-w-4xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>{id ? "Edit Post" : "Create New Post"}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  placeholder="Enter post title"
+                />
+              </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Main column */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Post Content</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="slug">Slug</Label>
-                  <Input
-                    id="slug"
-                    name="slug"
-                    value={formData.slug}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="body">Content</Label>
-                  <Textarea
-                    id="body"
-                    name="body"
-                    value={formData.body}
-                    onChange={handleChange}
-                    className="min-h-[300px]"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="excerpt">Excerpt</Label>
-                  <Textarea
-                    id="excerpt"
-                    name="excerpt"
-                    value={formData.excerpt || ""}
-                    onChange={handleChange}
-                    className="h-20"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+              <div>
+                <Label htmlFor="slug">Slug</Label>
+                <Input
+                  id="slug"
+                  value={formData.slug}
+                  onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+                  placeholder="post-slug"
+                />
+              </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>SEO Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="meta_title">Meta Title</Label>
-                  <Input
-                    id="meta_title"
-                    name="meta_title"
-                    value={formData.meta_title || ""}
-                    onChange={handleChange}
-                    placeholder={formData.title}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="meta_description">Meta Description</Label>
-                  <Textarea
-                    id="meta_description"
-                    name="meta_description"
-                    value={formData.meta_description || ""}
-                    onChange={handleChange}
-                    className="h-20"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              <div>
+                <Label htmlFor="excerpt">Excerpt</Label>
+                <Textarea
+                  id="excerpt"
+                  value={formData.excerpt}
+                  onChange={(e) => setFormData(prev => ({ ...prev, excerpt: e.target.value }))}
+                  placeholder="Brief description of the post"
+                />
+              </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Publication</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => handleSelectChange("status", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="published">Published</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-              <CardFooter>
+              <div>
+                <Label htmlFor="body">Content</Label>
+                <Textarea
+                  id="body"
+                  value={formData.body}
+                  onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
+                  placeholder="Write your post content here..."
+                  className="min-h-[300px]"
+                />
+              </div>
+
+              <div className="flex gap-4 justify-end">
                 <Button
-                  type="submit"
-                  className="w-full"
+                  variant="outline"
+                  onClick={() => handleSave("draft")}
                   disabled={saving}
                 >
-                  <Save className="mr-2 h-4 w-4" />
-                  {saving ? "Saving..." : "Save Post"}
+                  {saving ? "Saving..." : "Save as Draft"}
                 </Button>
-              </CardFooter>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Featured Image</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="featured_image">Image URL</Label>
-                  <Input
-                    id="featured_image"
-                    name="featured_image"
-                    value={formData.featured_image || ""}
-                    onChange={handleChange}
-                    placeholder="https://example.com/image.jpg"
-                  />
-                </div>
-                {formData.featured_image && (
-                  <div className="aspect-video w-full overflow-hidden rounded-md border">
-                    <img
-                      src={formData.featured_image}
-                      alt="Featured"
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/640x360?text=Invalid+Image';
-                      }}
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                <Button
+                  onClick={() => handleSave("published")}
+                  disabled={saving}
+                >
+                  {saving ? "Publishing..." : "Publish"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </form>
-    </div>
+      </Layout>
+    </AdminRoute>
   );
 };
 

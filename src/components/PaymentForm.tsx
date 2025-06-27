@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { useDream } from "@/context/DreamContext";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdmin } from "@/context/AdminContext";
 
 const PaymentOptions = [
   { id: "premium", name: "Premium Interpretation", price: 2, currency: "USD", priceId: "price_1RNrncCAL5p9VD6orH064HLz" },
@@ -16,8 +17,9 @@ const PaymentForm: React.FC = () => {
   const [isProcessing, setIsProcessing] = React.useState(false);
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { currentDream } = useDream();
+  const { currentDream, processDreamInterpretation } = useDream();
   const { toast } = useToast();
+  const { isAdmin } = useAdmin();
 
   const handlePayment = async () => {
     if (!currentDream) {
@@ -73,6 +75,43 @@ const PaymentForm: React.FC = () => {
     }
   };
 
+  const handleFreeInterpretation = async () => {
+    if (!currentDream) {
+      toast({
+        title: "No dream selected",
+        description: "Please submit a dream first",
+        variant: "destructive",
+      });
+      navigate("/home");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      toast({
+        title: "Processing your dream",
+        description: "Your dream interpretation is being prepared...",
+      });
+      
+      console.log("Processing free interpretation for admin user");
+      
+      // Process the dream interpretation directly
+      await processDreamInterpretation();
+      
+      // Navigate to interpretation page
+      navigate("/interpretation");
+    } catch (error) {
+      console.error("Error processing free interpretation:", error);
+      toast({
+        title: "Processing Error",
+        description: error.message || "Couldn't process your dream interpretation, please try again later.",
+        variant: "destructive"
+      });
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
@@ -87,6 +126,27 @@ const PaymentForm: React.FC = () => {
         )}
 
         <div className="space-y-4">
+          {/* Admin Free Option */}
+          {isAdmin && (
+            <div className="p-4 border-2 border-green-500 rounded-md bg-green-50">
+              <div className="flex justify-between mb-2">
+                <span className="font-semibold text-green-700">Admin Free Interpretation</span>
+                <span className="font-bold text-green-700">FREE</span>
+              </div>
+              <p className="text-sm text-green-600 mb-3">
+                Special admin access - Get your dream interpreted instantly at no cost
+              </p>
+              <Button 
+                className="w-full bg-green-600 hover:bg-green-700" 
+                onClick={handleFreeInterpretation}
+                disabled={isProcessing}
+              >
+                {isProcessing ? "Processing..." : "Get Free Interpretation"}
+              </Button>
+            </div>
+          )}
+
+          {/* Paid Option */}
           <div className="p-4 border rounded-md">
             <div className="flex justify-between mb-2">
               <span>{PaymentOptions[0].name}</span>
@@ -94,18 +154,17 @@ const PaymentForm: React.FC = () => {
                 ${PaymentOptions[0].price} {PaymentOptions[0].currency}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mb-3">
               {t("premiumPlanDescription") || "Enhanced dream interpretation with detailed analysis based on Islamic teachings"}
             </p>
+            <Button 
+              className="w-full islamic-gradient-btn" 
+              onClick={handlePayment}
+              disabled={isProcessing}
+            >
+              {isProcessing ? t("processing") : t("payNow")}
+            </Button>
           </div>
-
-          <Button 
-            className="w-full islamic-gradient-btn" 
-            onClick={handlePayment}
-            disabled={isProcessing}
-          >
-            {isProcessing ? t("processing") : t("payNow")}
-          </Button>
 
           <p className="text-xs text-center text-muted-foreground">
             {t("paymentDisclaimer")}

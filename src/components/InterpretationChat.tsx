@@ -11,6 +11,7 @@ import LoadingAnimation from "./LoadingAnimation";
 import { useOpenAIAssistant } from "@/hooks/useOpenAIAssistant";
 import aiAvatar from "/ai_avatar.png";
 import { useDream } from "@/context/DreamContext";
+import { jsonToStringArray } from "@/types";
 
 const InterpretationChat = () => {
   const { id } = useParams();
@@ -95,9 +96,9 @@ const InterpretationChat = () => {
           setIsInterpretationComplete(true);
         }
         
-        // Load chat history if available
-        const questions = Array.isArray(dream.questions) ? dream.questions : [];
-        const answers = Array.isArray(dream.answers) ? dream.answers : [];
+        // Load chat history if available - safely convert Json to string arrays
+        const questions = jsonToStringArray(dream.questions);
+        const answers = jsonToStringArray(dream.answers);
         
         setChatHistory({
           questions,

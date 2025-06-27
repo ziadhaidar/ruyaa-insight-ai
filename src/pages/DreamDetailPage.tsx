@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { Dream } from "@/types";
+import { Dream, jsonToStringArray, safeStatusCast } from "@/types";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,7 +51,20 @@ const DreamDetailPage: React.FC = () => {
         }
 
         console.log("Dream details fetched:", data);
-        setDream(data);
+        
+        // Convert the raw dream data to our Dream type with proper type safety
+        const dreamData: Dream = {
+          id: data.id,
+          user_id: data.user_id,
+          dream_text: data.dream_text,
+          questions: jsonToStringArray(data.questions),
+          answers: jsonToStringArray(data.answers),
+          interpretation: data.interpretation,
+          created_at: data.created_at,
+          status: safeStatusCast(data.status)
+        };
+        
+        setDream(dreamData);
       } catch (error: any) {
         console.error("Error fetching dream details:", error);
         toast({
@@ -106,8 +119,8 @@ const DreamDetailPage: React.FC = () => {
   }
 
   // Check if we have conversation data
-  const hasConversation = Array.isArray(dream.questions) && 
-                         Array.isArray(dream.answers) && 
+  const hasConversation = dream.questions && 
+                         dream.answers && 
                          dream.questions.length > 0;
 
   return (
@@ -119,7 +132,7 @@ const DreamDetailPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span>Dream from {format(new Date(dream.created_at), "MMMM d, yyyy")}</span>
                 <Badge 
-                  variant={status === "submitted" || status === "completed" ? "success" : "outline"} 
+                  variant={status === "submitted" || status === "completed" ? "default" : "outline"} 
                   className={status === "submitted" || status === "completed" ? "bg-green-600" : "bg-amber-500 text-white"}
                 >
                   {status}
@@ -155,7 +168,7 @@ const DreamDetailPage: React.FC = () => {
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-4 mt-2">
-                      {dream.questions.map((question, index) => (
+                      {dream.questions!.map((question, index) => (
                         <div key={index} className="border rounded-md p-4">
                           <div className="flex items-start mb-4">
                             <Avatar className="h-8 w-8 mr-2">
@@ -169,7 +182,7 @@ const DreamDetailPage: React.FC = () => {
                           {index < (dream.answers?.length || 0) && (
                             <div className="flex items-start justify-end">
                               <div className="bg-primary p-3 rounded-lg text-primary-foreground max-w-[80%]">
-                                <p className="text-sm">{dream.answers[index]}</p>
+                                <p className="text-sm">{dream.answers![index]}</p>
                               </div>
                               <Avatar className="h-8 w-8 ml-2">
                                 <div className="h-full w-full bg-muted flex items-center justify-center rounded-full">

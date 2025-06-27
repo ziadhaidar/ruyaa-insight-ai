@@ -9,8 +9,8 @@ export interface Dream {
   id: string;
   user_id: string;
   dream_text: string;
-  questions?: any[];
-  answers?: any[];
+  questions?: string[];
+  answers?: string[];
   interpretation?: string;
   created_at: string;
   status?: "pending" | "paid" | "interpreting" | "completed";
@@ -41,6 +41,23 @@ export interface InterpretationSession {
 }
 
 export type Language = "en" | "ar";
+
+// Helper function to safely convert Json to string array
+export function jsonToStringArray(json: any): string[] {
+  if (Array.isArray(json)) {
+    return json.filter(item => typeof item === 'string');
+  }
+  return [];
+}
+
+// Helper function to safely convert string to status enum
+export function safeStatusCast(status: string | null): "pending" | "paid" | "interpreting" | "completed" {
+  if (!status) return "pending";
+  if (["pending", "paid", "interpreting", "completed"].includes(status)) {
+    return status as "pending" | "paid" | "interpreting" | "completed";
+  }
+  return "pending";
+}
 
 // Extend the Database interface with database types
 export interface Database {

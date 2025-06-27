@@ -17,16 +17,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Trash2 } from "lucide-react";
 import LoadingAnimation from "./LoadingAnimation";
 import { useAuth } from "@/context/AuthContext";
-
-type Dream = {
-  id: string;
-  dream_text: string;
-  created_at: string;
-  status: string;
-  interpretation: string | null;
-  questions: string[] | null;
-  answers: string[] | null;
-};
+import { Dream, jsonToStringArray, safeStatusCast } from "@/types";
 
 const formatDate = (dateString: string) => {
   try {
@@ -102,9 +93,9 @@ const PastDreamsTable = () => {
   };
 
   // Process dreams to filter out duplicates and update status
-  const processAndFilterDreams = (data: Dream[]) => {
+  const processAndFilterDreams = (data: any[]): Dream[] => {
     // Group dreams by their text to identify duplicates
-    const dreamsByText: Record<string, Dream[]> = {};
+    const dreamsByText: Record<string, any[]> = {};
     
     data.forEach((dream) => {
       const key = dream.dream_text.trim();
@@ -137,34 +128,46 @@ const PastDreamsTable = () => {
       
       // Add only the most complete version
       if (sorted.length > 0) {
-        filteredDreams.push(sorted[0]);
+        const rawDream = sorted[0];
+        
+        // Convert the raw dream to our Dream type with proper type safety
+        const dream: Dream = {
+          id: rawDream.id,
+          user_id: rawDream.user_id,
+          dream_text: rawDream.dream_text,
+          questions: jsonToStringArray(rawDream.questions),
+          answers: jsonToStringArray(rawDream.answers),
+          interpretation: rawDream.interpretation,
+          created_at: rawDream.created_at,
+          status: safeStatusCast(rawDream.status)
+        };
+        
+        // Update status based on interpretation and chat history
+        let status = dream.status || "pending";
+        
+        // If there's an interpretation but status is still pending, update it
+        if (dream.interpretation && (!status || status === "pending")) {
+          status = "interpreted";
+        }
+        
+        // If there are questions and answers, consider it discussed
+        if (
+          dream.questions && 
+          dream.questions.length > 0 && 
+          dream.answers && 
+          dream.answers.length > 0
+        ) {
+          status = "completed";
+        }
+        
+        filteredDreams.push({
+          ...dream,
+          status,
+        });
       }
     });
     
-    // Update status based on interpretation and chat history
-    return filteredDreams.map((dream: Dream) => {
-      let status = dream.status || "pending";
-      
-      // If there's an interpretation but status is still pending, update it
-      if (dream.interpretation && (!status || status === "pending")) {
-        status = "interpreted";
-      }
-      
-      // If there are questions and answers, consider it discussed
-      if (
-        Array.isArray(dream.questions) && 
-        dream.questions.length > 0 && 
-        Array.isArray(dream.answers) && 
-        dream.answers.length > 0
-      ) {
-        status = "discussed";
-      }
-      
-      return {
-        ...dream,
-        status,
-      };
-    });
+    return filteredDreams;
   };
 
   // Toggle selection of a single dream
@@ -309,9 +312,9 @@ const PastDreamsTable = () => {
     }
     
     if (
-      Array.isArray(dream.questions) && 
+      dream.questions && 
       dream.questions.length > 0 && 
-      Array.isArray(dream.answers) && 
+      dream.answers && 
       dream.answers.length > 0
     ) {
       return `Completed`;

@@ -1,7 +1,6 @@
-
 import React, { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { Dream, InterpretationSession, Message } from "@/types";
+import { Dream, InterpretationSession, Message, jsonToStringArray, safeStatusCast } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { useOpenAIAssistant } from "@/hooks/useOpenAIAssistant";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,10 +56,10 @@ export const useDreamState = () => {
           id: existingDream.id,
           user_id: existingDream.user_id,
           dream_text: existingDream.dream_text,
-          questions: existingDream.questions || [],
-          answers: existingDream.answers || [],
+          questions: jsonToStringArray(existingDream.questions),
+          answers: jsonToStringArray(existingDream.answers),
           created_at: existingDream.created_at,
-          status: existingDream.status || "pending",
+          status: safeStatusCast(existingDream.status),
           interpretation: existingDream.interpretation
         };
         

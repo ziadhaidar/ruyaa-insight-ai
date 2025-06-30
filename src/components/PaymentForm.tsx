@@ -9,17 +9,19 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const PaymentOptions = [
+  { id: "free", name: "Free Interpretation", price: 0, currency: "USD", priceId: null },
   { id: "premium", name: "Premium Interpretation", price: 2, currency: "USD", priceId: "price_1RNrncCAL5p9VD6orH064HLz" },
 ];
 
 const PaymentForm: React.FC = () => {
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const [selectedOption, setSelectedOption] = React.useState("premium");
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { currentDream } = useDream();
+  const { currentDream, processDreamInterpretation } = useDream();
   const { toast } = useToast();
 
-  const handlePayment = async () => {
+  const handleFreeInterpretation = async () => {
     if (!currentDream) {
       toast({
         title: "No dream selected",
@@ -33,7 +35,46 @@ const PaymentForm: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      const option = PaymentOptions[0]; // Always use premium option
+      toast({
+        title: "Processing your dream",
+        description: "Your free interpretation is being generated",
+      });
+      
+      console.log("Processing free dream interpretation");
+      console.log("Current dream data:", currentDream);
+      
+      // Process the dream interpretation
+      await processDreamInterpretation();
+      
+      // Navigate to interpretation page
+      navigate("/interpretation");
+    } catch (error) {
+      console.error("Error processing free dream:", error);
+      toast({
+        title: "Error",
+        description: "Couldn't process your dream interpretation, please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePremiumPayment = async () => {
+    if (!currentDream) {
+      toast({
+        title: "No dream selected",
+        description: "Please submit a dream first",
+        variant: "destructive",
+      });
+      navigate("/home");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const option = PaymentOptions[1]; // Premium option
       
       toast({
         title: "Redirecting to payment",
@@ -73,6 +114,14 @@ const PaymentForm: React.FC = () => {
     }
   };
 
+  const handleSubmit = () => {
+    if (selectedOption === "free") {
+      handleFreeInterpretation();
+    } else {
+      handlePremiumPayment();
+    }
+  };
+
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
@@ -87,24 +136,55 @@ const PaymentForm: React.FC = () => {
         )}
 
         <div className="space-y-4">
-          <div className="p-4 border rounded-md">
-            <div className="flex justify-between mb-2">
-              <span>{PaymentOptions[0].name}</span>
-              <span className="font-bold">
-                ${PaymentOptions[0].price} {PaymentOptions[0].currency}
-              </span>
+          {PaymentOptions.map((option) => (
+            <div 
+              key={option.id} 
+              className={`p-4 border rounded-md cursor-pointer transition-colors ${
+                selectedOption === option.id 
+                  ? "border-primary bg-primary/5" 
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+              onClick={() => setSelectedOption(option.id)}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id={option.id}
+                    name="paymentOption"
+                    value={option.id}
+                    checked={selectedOption === option.id}
+                    onChange={(e) => setSelectedOption(e.target.value)}
+                    className="w-4 h-4 text-primary"
+                  />
+                  <label htmlFor={option.id} className="font-medium cursor-pointer">
+                    {option.name}
+                  </label>
+                </div>
+                <span className="font-bold">
+                  {option.price === 0 ? "Free" : `$${option.price} ${option.currency}`}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {option.id === "free" 
+                  ? "Basic dream interpretation to help you understand your dream" 
+                  : (t("premiumPlanDescription") || "Enhanced dream interpretation with detailed analysis based on Islamic teachings")
+                }
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {t("premiumPlanDescription") || "Enhanced dream interpretation with detailed analysis based on Islamic teachings"}
-            </p>
-          </div>
+          ))}
 
           <Button 
             className="w-full islamic-gradient-btn" 
-            onClick={handlePayment}
+            onClick={handleSubmit}
             disabled={isProcessing}
           >
-            {isProcessing ? t("processing") : t("payNow")}
+            {isProcessing 
+              ? t("processing") 
+              : selectedOption === "free" 
+                ? "Get Free Interpretation" 
+                : t("payNow")
+            }
           </Button>
 
           <p className="text-xs text-center text-muted-foreground">

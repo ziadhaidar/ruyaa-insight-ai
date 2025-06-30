@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -11,6 +10,8 @@ import {
   getLatestAssistantMessage
 } from "@/integrations/openai/assistant";
 import { useToast } from "@/components/ui/use-toast";
+
+const SHORT_ASSISTANT_ID = "asst_9F7K3xAC6YOFdsMHuuH7D1Yj";
 
 export const useOpenAIAssistant = () => {
   const [threadId, setThreadId] = useState<string | null>(null);
@@ -255,6 +256,68 @@ Do not ask any further questions.`;
     }
   };
 
+  // Get a short interpretation for a dream using the dedicated short assistant
+  const getShortInterpretation = async (dreamText: string) => {
+    try {
+      setIsLoading(true);
+      console.log("Getting short interpretation for dream:", dreamText.substring(0, 50) + "...");
+      
+      // Create a new thread
+      const newThreadId = await createAssistantThread();
+      if (!newThreadId) {
+        throw new Error("Failed to create thread for short interpretation");
+      }
+      
+      // Add the dream text to the thread
+      await addMessageToThread(newThreadId, dreamText, "user");
+      
+      // Run the short assistant without any specific instructions
+      const run = await runAssistant(newThreadId, "", SHORT_ASSISTANT_ID);
+      
+      if (!run) {
+        throw new Error("Failed to run short assistant for interpretation");
+      }
+      
+      // Poll for completion
+      const runResult = await pollRunStatus(newThreadId, run.id);
+      console.log("Short interpretation run completed with status:", runResult.status);
+      
+      // Get the assistant's response
+      const messages = await getMessages(newThreadId);
+      
+      if (!messages || messages.length === 0) {
+        throw new Error("No messages found after short interpretation run");
+      }
+      
+      // Find the assistant's response (the latest assistant message)
+      const assistantMessages = messages.filter(m => m.role === "assistant");
+      const latestAssistantMessage = assistantMessages[0]; // They come in reverse chronological order
+      
+      if (!latestAssistantMessage) {
+        throw new Error("No assistant message found after short interpretation run");
+      }
+      
+      // Extract the text from the assistant's response
+      const responseText = latestAssistantMessage.content[0]?.text?.value;
+      if (!responseText) {
+        throw new Error("Assistant message has no text content");
+      }
+      
+      console.log("Got short dream interpretation:", responseText.substring(0, 50) + "...");
+      return responseText;
+    } catch (error) {
+      console.error("Error getting short dream interpretation:", error);
+      toast({
+        title: "Interpretation Error",
+        description: `Could not get short interpretation: ${error.message}`,
+        variant: "destructive"
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Ask a follow-up question about a dream interpretation
   const askFollowUpQuestion = async (
     question: string, 
@@ -350,6 +413,7 @@ Do not ask any further questions.`;
     getAnsweredQuestionsCount,
     getLatestAssistantMessage,
     getInterpretation,
+    getShortInterpretation,
     askFollowUpQuestion
   };
 };

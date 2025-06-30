@@ -22,6 +22,8 @@ export const DreamProvider = ({ children }: DreamProviderProps) => {
     setCurrentDream: dreamState.setCurrentDream,
     startNewDreamSession: dreamState.startNewDreamSession,
     isLoading: dreamState.isLoading,
+    processDreamInterpretation: dreamActions.processDreamInterpretation,
+    processShortDreamInterpretation: dreamActions.processShortDreamInterpretation,
     ...dreamActions
   };
 

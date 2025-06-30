@@ -8,6 +8,7 @@ export interface DreamContextType {
   setCurrentDream: (dream: Dream | null) => void;
   startNewDreamSession: (dreamText: string) => void;
   processDreamInterpretation: () => void;
+  processShortDreamInterpretation: () => void;
   askQuestion: (question: string) => void;
   submitAnswer: (answer: string) => Promise<void>;
   completeDreamInterpretation: () => void;

@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
 import { Dream, Message, InterpretationSession } from "@/types";
@@ -6,6 +7,108 @@ import { useToast } from "@/components/ui/use-toast";
 // Process dream interpretation with the 3-question protocol
 export const useDreamActions = (state: any) => {
   const { toast } = useToast();
+
+  // Process a dream interpretation request with short assistant
+  const processShortDreamInterpretation = async () => {
+    if (!state.currentDream || !state.user) {
+      toast({
+        title: "Error",
+        description: "No dream or user data found. Please try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    state.setIsLoading(true);
+    
+    try {
+      console.log("Starting short dream interpretation process");
+      
+      // Get interpretation directly using the short assistant
+      const interpretation = await state.getShortInterpretation(state.currentDream.dream_text);
+      console.log("Received short interpretation:", interpretation);
+      
+      // Create a session with just the dream and interpretation
+      const session: InterpretationSession = {
+        dream: state.currentDream,
+        messages: [
+          {
+            id: uuidv4(),
+            dreamId: state.currentDream.id,
+            content: state.currentDream.dream_text,
+            sender: "user",
+            timestamp: new Date().toISOString()
+          },
+          {
+            id: uuidv4(),
+            dreamId: state.currentDream.id,
+            content: interpretation,
+            sender: "ai",
+            timestamp: new Date().toISOString()
+          }
+        ],
+        currentQuestion: 4, // Set to completed state
+        isComplete: true
+      };
+      
+      state.setCurrentSession(session);
+      console.log("Short interpretation session created");
+      
+      // Save dream to database if it doesn't exist
+      const { data: existingDreams, error: fetchError } = await supabase
+        .from('dreams')
+        .select('*')
+        .eq('id', state.currentDream.id);
+        
+      if (fetchError) {
+        console.error("Error checking if dream exists:", fetchError);
+      }
+      
+      if (!existingDreams || existingDreams.length === 0) {
+        console.log("Dream doesn't exist in database, saving...");
+        
+        const { error } = await supabase.from('dreams').insert({
+          user_id: state.user.id,
+          dream_text: state.currentDream.dream_text,
+          status: "completed",
+          interpretation: interpretation
+        });
+        
+        if (error) {
+          console.error("Error saving dream:", error);
+          toast({
+            title: "Warning",
+            description: "Your dream interpretation is ready, but there was an issue saving it to your history.",
+            variant: "destructive"
+          });
+        } else {
+          console.log("Dream saved to database successfully");
+        }
+      } else {
+        console.log("Dream already exists in database, updating with interpretation");
+        
+        const { error } = await supabase.from('dreams').update({
+          status: "completed",
+          interpretation: interpretation
+        }).eq('id', state.currentDream.id);
+        
+        if (error) {
+          console.error("Error updating dream:", error);
+        }
+      }
+      
+    } catch (error: any) {
+      console.error("Error processing short dream interpretation:", error);
+      toast({
+        title: "Dream Interpretation Error",
+        description: `Couldn't process your dream interpretation: ${error.message}`,
+        variant: "destructive"
+      });
+      throw error;
+    } finally {
+      state.setIsLoading(false);
+    }
+  };
 
   // Process a dream interpretation request
   const processDreamInterpretation = async () => {
@@ -337,6 +440,7 @@ export const useDreamActions = (state: any) => {
 
   return {
     processDreamInterpretation,
+    processShortDreamInterpretation,
     askQuestion,
     submitAnswer,
     completeDreamInterpretation,

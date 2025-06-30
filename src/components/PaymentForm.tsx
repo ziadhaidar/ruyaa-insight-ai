@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const PaymentOptions = [
+  { id: "free_short", name: "Free Short Interpretation", price: 0, currency: "USD", priceId: null },
   { id: "free", name: "Free Interpretation", price: 0, currency: "USD", priceId: null },
   { id: "premium", name: "Premium Interpretation", price: 2, currency: "USD", priceId: "price_1RNrncCAL5p9VD6orH064HLz" },
 ];
@@ -18,7 +19,7 @@ const PaymentForm: React.FC = () => {
   const [selectedOption, setSelectedOption] = React.useState("premium");
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { currentDream, processDreamInterpretation } = useDream();
+  const { currentDream, processDreamInterpretation, processShortDreamInterpretation } = useDream();
   const { toast } = useToast();
 
   const handleFreeInterpretation = async () => {
@@ -60,6 +61,45 @@ const PaymentForm: React.FC = () => {
     }
   };
 
+  const handleFreeShortInterpretation = async () => {
+    if (!currentDream) {
+      toast({
+        title: "No dream selected",
+        description: "Please submit a dream first",
+        variant: "destructive",
+      });
+      navigate("/home");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      toast({
+        title: "Processing your dream",
+        description: "Your short interpretation is being generated",
+      });
+      
+      console.log("Processing short dream interpretation");
+      console.log("Current dream data:", currentDream);
+      
+      // Process the short dream interpretation
+      await processShortDreamInterpretation();
+      
+      // Navigate to interpretation page
+      navigate("/interpretation");
+    } catch (error) {
+      console.error("Error processing short dream:", error);
+      toast({
+        title: "Error",
+        description: "Couldn't process your dream interpretation, please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handlePremiumPayment = async () => {
     if (!currentDream) {
       toast({
@@ -74,7 +114,7 @@ const PaymentForm: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      const option = PaymentOptions[1]; // Premium option
+      const option = PaymentOptions[2]; // Premium option
       
       toast({
         title: "Redirecting to payment",
@@ -115,7 +155,9 @@ const PaymentForm: React.FC = () => {
   };
 
   const handleSubmit = () => {
-    if (selectedOption === "free") {
+    if (selectedOption === "free_short") {
+      handleFreeShortInterpretation();
+    } else if (selectedOption === "free") {
       handleFreeInterpretation();
     } else {
       handlePremiumPayment();
@@ -166,9 +208,11 @@ const PaymentForm: React.FC = () => {
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">
-                {option.id === "free" 
-                  ? "Basic dream interpretation to help you understand your dream" 
-                  : (t("premiumPlanDescription") || "Enhanced dream interpretation with detailed analysis based on Islamic teachings")
+                {option.id === "free_short" 
+                  ? "Quick and simple dream interpretation without follow-up questions" 
+                  : option.id === "free" 
+                    ? "Basic dream interpretation to help you understand your dream" 
+                    : (t("premiumPlanDescription") || "Enhanced dream interpretation with detailed analysis based on Islamic teachings")
                 }
               </p>
             </div>
@@ -181,9 +225,11 @@ const PaymentForm: React.FC = () => {
           >
             {isProcessing 
               ? t("processing") 
-              : selectedOption === "free" 
-                ? "Get Free Interpretation" 
-                : t("payNow")
+              : selectedOption === "free_short"
+                ? "Get Short Interpretation"
+                : selectedOption === "free" 
+                  ? "Get Free Interpretation" 
+                  : t("payNow")
             }
           </Button>
 

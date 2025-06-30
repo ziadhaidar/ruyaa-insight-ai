@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Use the securely stored API key from Supabase
@@ -181,18 +180,20 @@ ${content}`;
   }
 };
 
-// Run the assistant on a thread with optional instructions
+// Run the assistant on a thread with optional instructions and custom assistant ID
 export const runAssistant = async (
   threadId: string,
-  instructions?: string
+  instructions?: string,
+  customAssistantId?: string
 ): Promise<OpenAIRun> => {
   try {
-    console.log(`Running assistant on thread ${threadId} with instructions: ${instructions || "none"}`);
+    const assistantIdToUse = customAssistantId || ASSISTANT_ID;
+    console.log(`Running assistant ${assistantIdToUse} on thread ${threadId} with instructions: ${instructions || "none"}`);
     
     const apiKey = await getApiKey();
     
     const body: Record<string, any> = {
-      assistant_id: ASSISTANT_ID
+      assistant_id: assistantIdToUse
     };
     
     // Add instructions if provided
@@ -200,7 +201,7 @@ export const runAssistant = async (
       body.instructions = instructions;
     }
     
-    console.log("Run assistant request:", { threadId, assistantId: ASSISTANT_ID, hasInstructions: !!instructions });
+    console.log("Run assistant request:", { threadId, assistantId: assistantIdToUse, hasInstructions: !!instructions });
     
     const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
       method: 'POST',

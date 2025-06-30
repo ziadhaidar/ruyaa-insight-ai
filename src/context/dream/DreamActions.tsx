@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
 import { Dream, Message, InterpretationSession } from "@/types";
@@ -23,12 +22,13 @@ export const useDreamActions = (state: any) => {
     
     try {
       console.log("Starting short dream interpretation process");
+      console.log("Using short assistant for direct interpretation");
       
-      // Get interpretation directly using the short assistant
+      // Get interpretation directly using the short assistant - NO follow-up questions
       const interpretation = await state.getShortInterpretation(state.currentDream.dream_text);
       console.log("Received short interpretation:", interpretation);
       
-      // Create a session with just the dream and interpretation
+      // Create a session with just the dream and interpretation - mark as complete
       const session: InterpretationSession = {
         dream: state.currentDream,
         messages: [
@@ -47,12 +47,12 @@ export const useDreamActions = (state: any) => {
             timestamp: new Date().toISOString()
           }
         ],
-        currentQuestion: 4, // Set to completed state
-        isComplete: true
+        currentQuestion: 4, // Set to completed state (beyond the 3 questions)
+        isComplete: true // Mark as complete - no more interaction needed
       };
       
       state.setCurrentSession(session);
-      console.log("Short interpretation session created");
+      console.log("Short interpretation session created and marked as complete");
       
       // Save dream to database if it doesn't exist
       const { data: existingDreams, error: fetchError } = await supabase
@@ -110,7 +110,7 @@ export const useDreamActions = (state: any) => {
     }
   };
 
-  // Process a dream interpretation request
+  // Process a dream interpretation request (regular 3-question flow)
   const processDreamInterpretation = async () => {
     if (!state.currentDream || !state.user) {
       toast({
@@ -124,7 +124,7 @@ export const useDreamActions = (state: any) => {
     state.setIsLoading(true);
     
     try {
-      console.log("Starting dream interpretation process");
+      console.log("Starting regular dream interpretation process with 3-question flow");
       
       // Create a new OpenAI thread
       let threadId = state.threadId;

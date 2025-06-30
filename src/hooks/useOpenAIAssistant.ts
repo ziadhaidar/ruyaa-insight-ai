@@ -260,18 +260,20 @@ Do not ask any further questions.`;
   const getShortInterpretation = async (dreamText: string) => {
     try {
       setIsLoading(true);
-      console.log("Getting short interpretation for dream:", dreamText.substring(0, 50) + "...");
+      console.log("Getting short interpretation for dream using dedicated short assistant:", dreamText.substring(0, 50) + "...");
+      console.log("Using short assistant ID:", SHORT_ASSISTANT_ID);
       
-      // Create a new thread
+      // Create a new thread specifically for the short assistant
       const newThreadId = await createAssistantThread();
       if (!newThreadId) {
         throw new Error("Failed to create thread for short interpretation");
       }
       
-      // Add the dream text to the thread
+      // Add the dream text to the thread - no user context needed for short interpretation
       await addMessageToThread(newThreadId, dreamText, "user");
       
-      // Run the short assistant without any specific instructions
+      // Run the short assistant WITHOUT any instructions - let it use its built-in instructions
+      console.log("Running short assistant without custom instructions");
       const run = await runAssistant(newThreadId, "", SHORT_ASSISTANT_ID);
       
       if (!run) {

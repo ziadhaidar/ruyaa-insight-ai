@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Dream, InterpretationSession, Message, jsonToStringArray, safeStatusCast } from "@/types";
@@ -20,7 +21,8 @@ export const useDreamState = () => {
     setThreadId,
     createAssistantThread,
     sendMessageToAssistant,
-    runAssistantAndGetResponse
+    runAssistantAndGetResponse,
+    getShortInterpretation
   } = useOpenAIAssistant();
 
   // Create a new dream session
@@ -106,6 +108,7 @@ export const useDreamState = () => {
     user,
     createAssistantThread,
     sendMessageToAssistant,
-    runAssistantAndGetResponse
+    runAssistantAndGetResponse,
+    getShortInterpretation
   };
 };

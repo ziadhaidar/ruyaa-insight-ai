@@ -13,7 +13,7 @@ export interface Dream {
   answers?: string[];
   interpretation?: string;
   created_at: string;
-  status?: "pending" | "paid" | "interpreting" | "completed";
+  status?: "pending" | "paid" | "interpreting" | "completed" | "interpreted";
 }
 
 export interface Message {
@@ -51,12 +51,48 @@ export function jsonToStringArray(json: any): string[] {
 }
 
 // Helper function to safely convert string to status enum
-export function safeStatusCast(status: string | null): "pending" | "paid" | "interpreting" | "completed" {
+export function safeStatusCast(status: string | null): "pending" | "paid" | "interpreting" | "completed" | "interpreted" {
   if (!status) return "pending";
-  if (["pending", "paid", "interpreting", "completed"].includes(status)) {
-    return status as "pending" | "paid" | "interpreting" | "completed";
+  if (["pending", "paid", "interpreting", "completed", "interpreted"].includes(status)) {
+    return status as "pending" | "paid" | "interpreting" | "completed" | "interpreted";
   }
   return "pending";
+}
+
+// Helper function to safely cast gender
+export function safeGenderCast(gender: string | null): "male" | "female" | "other" | "prefer_not_to_say" | undefined {
+  if (!gender) return undefined;
+  if (["male", "female", "other", "prefer_not_to_say"].includes(gender)) {
+    return gender as "male" | "female" | "other" | "prefer_not_to_say";
+  }
+  return undefined;
+}
+
+// Helper function to safely cast marital status
+export function safeMaritalStatusCast(status: string | null): "single" | "married" | "divorced" | "widowed" | "other" | undefined {
+  if (!status) return undefined;
+  if (["single", "married", "divorced", "widowed", "other"].includes(status)) {
+    return status as "single" | "married" | "divorced" | "widowed" | "other";
+  }
+  return undefined;
+}
+
+// Helper function to safely cast work status
+export function safeWorkStatusCast(status: string | null): "employed" | "unemployed" | "student" | "retired" | "other" | undefined {
+  if (!status) return undefined;
+  if (["employed", "unemployed", "student", "retired", "other"].includes(status)) {
+    return status as "employed" | "unemployed" | "student" | "retired" | "other";
+  }
+  return undefined;
+}
+
+// Helper function to safely cast post status
+export function safePostStatusCast(status: string | null): "draft" | "published" {
+  if (!status) return "draft";
+  if (["draft", "published"].includes(status)) {
+    return status as "draft" | "published";
+  }
+  return "draft";
 }
 
 // Extend the Database interface with database types

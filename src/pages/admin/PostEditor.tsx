@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
+import { safePostStatusCast } from "@/types";
 
 interface PostFormData {
   title: string;
@@ -75,7 +76,20 @@ const PostEditor = () => {
           .single();
 
         if (error) throw error;
-        if (data) setFormData(data);
+        if (data) {
+          // Safely cast the status and set form data
+          const typedFormData: PostFormData = {
+            title: data.title || "",
+            slug: data.slug || "",
+            body: data.body || "",
+            excerpt: data.excerpt || "",
+            status: safePostStatusCast(data.status),
+            meta_title: data.meta_title || "",
+            meta_description: data.meta_description || "",
+            featured_image: data.featured_image || ""
+          };
+          setFormData(typedFormData);
+        }
       } catch (error) {
         console.error("Error fetching post:", error);
         toast.error("Failed to load post");

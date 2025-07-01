@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { MoreHorizontal, Plus, Search } from "lucide-react";
+import { safePostStatusCast } from "@/types";
 
 interface Post {
   id: string;
@@ -60,7 +61,14 @@ const BlogManager = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPosts(data || []);
+      
+      // Safely cast the status field and map to proper Post type
+      const typedPosts: Post[] = (data || []).map(post => ({
+        ...post,
+        status: safePostStatusCast(post.status)
+      }));
+      
+      setPosts(typedPosts);
     } catch (error) {
       console.error("Error fetching posts:", error);
       toast.error("Failed to load posts");

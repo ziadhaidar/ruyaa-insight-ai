@@ -24,6 +24,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { countries } from "@/lib/countries";
+import { safeGenderCast, safeMaritalStatusCast, safeWorkStatusCast } from "@/types";
 
 const profileFormSchema = z.object({
   fullName: z.string().optional(),
@@ -78,15 +79,15 @@ const SettingsPage: React.FC = () => {
         }
 
         if (data) {
-          // Set default values from existing profile
+          // Set default values from existing profile with proper type casting
           form.setValue('fullName', data.full_name || "");
           form.setValue('country', data.country || undefined);
           form.setValue('age', data.age || undefined);
-          form.setValue('gender', data.gender || undefined);
-          form.setValue('maritalStatus', data.marital_status || undefined);
+          form.setValue('gender', safeGenderCast(data.gender));
+          form.setValue('maritalStatus', safeMaritalStatusCast(data.marital_status));
           form.setValue('hasKids', data.has_kids ? 'yes' : 'no');
           form.setValue('hasPets', data.has_pets ? 'yes' : 'no');
-          form.setValue('workStatus', data.work_status || undefined);
+          form.setValue('workStatus', safeWorkStatusCast(data.work_status));
           
           // Set email for password reset
           if (user.email) {

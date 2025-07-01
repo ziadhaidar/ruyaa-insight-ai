@@ -188,7 +188,7 @@ export const runAssistant = async (
 ): Promise<OpenAIRun> => {
   try {
     const assistantIdToUse = customAssistantId || ASSISTANT_ID;
-    console.log(`Running assistant ${assistantIdToUse} on thread ${threadId} with instructions: ${instructions || "none"}`);
+    console.log(`Running assistant ${assistantIdToUse} on thread ${threadId} with instructions: ${instructions || "none (using built-in instructions)"}`);
     
     const apiKey = await getApiKey();
     
@@ -196,12 +196,15 @@ export const runAssistant = async (
       assistant_id: assistantIdToUse
     };
     
-    // Add instructions if provided
-    if (instructions) {
+    // Only add instructions if provided and not undefined
+    if (instructions !== undefined && instructions !== null && instructions.trim() !== "") {
       body.instructions = instructions;
+      console.log("Using custom instructions:", instructions);
+    } else {
+      console.log("No custom instructions provided - assistant will use its built-in instructions");
     }
     
-    console.log("Run assistant request:", { threadId, assistantId: assistantIdToUse, hasInstructions: !!instructions });
+    console.log("Run assistant request:", { threadId, assistantId: assistantIdToUse, hasCustomInstructions: !!instructions });
     
     const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
       method: 'POST',

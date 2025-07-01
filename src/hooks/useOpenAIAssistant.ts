@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -273,8 +274,8 @@ Do not ask any further questions.`;
       await addMessageToThread(newThreadId, dreamText, "user");
       
       // Run the short assistant WITHOUT any instructions - let it use its built-in instructions
-      console.log("Running short assistant without custom instructions");
-      const run = await runAssistant(newThreadId, "", SHORT_ASSISTANT_ID);
+      console.log("Running short assistant without custom instructions - using built-in instructions only");
+      const run = await runAssistant(newThreadId, undefined, SHORT_ASSISTANT_ID);
       
       if (!run) {
         throw new Error("Failed to run short assistant for interpretation");

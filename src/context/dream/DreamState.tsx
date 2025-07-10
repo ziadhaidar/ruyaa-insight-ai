@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Dream, InterpretationSession, Message, jsonToStringArray, safeStatusCast } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { useOpenAIAssistant } from "@/hooks/useOpenAIAssistant";
+import { useOpenAIAssistantShort } from "@/hooks/useOpenAIAssistantShort";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -21,9 +22,11 @@ export const useDreamState = () => {
     setThreadId,
     createAssistantThread,
     sendMessageToAssistant,
-    runAssistantAndGetResponse,
-    getShortInterpretation
+    runAssistantAndGetResponse
   } = useOpenAIAssistant();
+  
+  // Use separate hook for short interpretations
+  const { getShortInterpretation } = useOpenAIAssistantShort();
 
   // Create a new dream session
   const startNewDreamSession = async (dreamText: string) => {

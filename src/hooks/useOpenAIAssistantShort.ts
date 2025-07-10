@@ -1,11 +1,33 @@
 import { useState } from "react";
 import { 
   createThread, 
-  addMessageToThread, 
   runAssistant, 
   checkRunStatus, 
   getMessages
 } from "@/integrations/openai/assistant";
+import { supabase } from "@/integrations/supabase/client";
+
+// Get the API key from Supabase
+const getApiKey = async (): Promise<string> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('get-openai-key', {
+      body: { key: 'OPENAI_API_KEY' },
+    });
+    
+    if (error) {
+      throw new Error(`Failed to get API key: ${error.message}`);
+    }
+    
+    if (!data || !data.key) {
+      throw new Error("No API key found in Supabase response");
+    }
+    
+    return data.key;
+  } catch (error) {
+    console.error("Error in getApiKey:", error);
+    throw error;
+  }
+};
 import { useToast } from "@/components/ui/use-toast";
 
 const SHORT_ASSISTANT_ID = "asst_9F7K3xAC6YOFdsMHuuH7D1Yj";
@@ -41,29 +63,6 @@ export const useOpenAIAssistantShort = () => {
     }
   };
 
-  // Add a message to the thread
-  const sendMessageToAssistant = async (threadId: string, content: string, userId: string) => {
-    try {
-      setIsLoading(true);
-      console.log(`Sending message to assistant on thread ${threadId}`);
-      const message = await addMessageToThread(threadId, content, userId);
-      if (!message) {
-        throw new Error("Failed to add message to thread");
-      }
-      console.log("Message added to thread:", message.id);
-      return message;
-    } catch (error) {
-      console.error("Error sending message to assistant:", error);
-      toast({
-        title: "Message Error",
-        description: `Could not send your message to the assistant: ${error.message}`,
-        variant: "destructive"
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Poll the run status until it's complete or failed
   const pollRunStatus = async (threadId: string, runId: string, maxAttempts = 30, delayMs = 1000) => {
@@ -105,8 +104,27 @@ export const useOpenAIAssistantShort = () => {
         throw new Error("Failed to create thread for short interpretation");
       }
       
-      // Add the dream text to the thread - no user context needed for short interpretation
-      await addMessageToThread(newThreadId, dreamText, "user");
+      // Add the dream text to the thread - NO user context for short interpretation
+      // Use a simple message directly to OpenAI API without user profile context
+      const apiKey = await getApiKey();
+      
+      const response = await fetch(`https://api.openai.com/v1/threads/${newThreadId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'OpenAI-Beta': 'assistants=v2'
+        },
+        body: JSON.stringify({
+          role: 'user',
+          content: dreamText // Just the dream text, no user context
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to add message: ${response.status} - ${errorText}`);
+      }
       
       // Run the short assistant WITHOUT any instructions - let it use its built-in instructions
       console.log("Running short assistant without custom instructions - using built-in instructions only");
@@ -162,7 +180,6 @@ export const useOpenAIAssistantShort = () => {
     isLoading,
     setIsLoading,
     createAssistantThread,
-    sendMessageToAssistant,
     getShortInterpretation
   };
 };
